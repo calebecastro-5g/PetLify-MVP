@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: petlify-mvp
+    runtime: python
+    plan: free
+    buildCommand: bash render-build.sh
+    startCommand: bash render-start.sh
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: sqlite:///instance/petlify.db
+      - key: CORS_ORIGINS
+        value: '*'
+      - key: BCRYPT_LOG_ROUNDS
+        value: '12'
