@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import Spinner from '../components/Spinner';
@@ -12,16 +12,24 @@ type DevAccount = {
   email: string;
 };
 
+type StoreOption = {
+  id: number;
+  name: string;
+  tenant_key: string;
+  address?: string | null;
+};
+
 const roles: Array<{ value: UserRole; label: string; hint: string }> = [
   { value: 'cliente', label: 'Cliente', hint: 'Agenda, pets, carteirinha e checkout' },
   { value: 'funcionario', label: 'Funcionário', hint: 'Agenda geral, vacinas e operação' },
-  { value: 'dono', label: 'Dono', hint: 'Equipe, financeiro e gestão da loja' },
+  { value: 'dono', label: 'Dono', hint: 'Criar pet shop, equipe e gestão' },
 ];
 
 const devAccounts: DevAccount[] = [
   { label: 'Cliente Dev', role: 'cliente', email: 'cliente@petlify.dev' },
   { label: 'Funcionário Dev', role: 'funcionario', email: 'funcionario@petlify.dev' },
   { label: 'Dono Dev', role: 'dono', email: 'dono@petlify.dev' },
+  { label: 'Dono Maria', role: 'dono', email: 'dono.maria@petlify.dev' },
 ];
 
 function routeByRole(role: string) {
@@ -34,6 +42,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>('login');
   const [role, setRole] = useState<UserRole>('cliente');
+  const [stores, setStores] = useState<StoreOption[]>([]);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -41,6 +50,8 @@ function LoginPage() {
     cpf: '',
     phone: '',
     storeKey: 'default',
+    storeName: '',
+    storeAddress: '',
     acceptedLgpd: true,
     twoFactorCode: '',
   });
@@ -49,6 +60,24 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function loadStores() {
+      try {
+        const response = await apiFetch('/api/stores');
+        if (response.ok) {
+          const data = (await response.json()) as StoreOption[];
+          setStores(data);
+          if (data[0] && !form.storeKey) {
+            setForm((prev) => ({ ...prev, storeKey: data[0].tenant_key }));
+          }
+        }
+      } catch (err) {
+        // A busca de lojas é auxiliar. O login continua funcionando mesmo se falhar.
+      }
+    }
+    loadStores();
+  }, []);
 
   const applyDevAccount = (account: DevAccount) => {
     setMode('login');
@@ -59,10 +88,18 @@ function LoginPage() {
       ...prev,
       email: account.email,
       password: 'Dev@123456',
-      storeKey: 'default',
+      storeKey: account.email.includes('.maria') ? 'petshop-da-maria' : 'default',
     }));
     setMessage(`${account.label} preenchido. Clique em Entrar para acessar.`);
     setError('');
+  };
+
+  const changeRole = (nextRole: UserRole) => {
+    setRole(nextRole);
+    setPending2fa(false);
+    setDev2faCode('');
+    setError('');
+    setMessage('');
   };
 
   const handleAuthSuccess = (data: { access_token: string; role: UserRole; name?: string }) => {
@@ -112,6 +149,8 @@ function LoginPage() {
             phone: form.phone,
             role,
             store_key: form.storeKey,
+            store_name: form.storeName,
+            store_address: form.storeAddress,
             accepted_lgpd: form.acceptedLgpd,
           }
         : { email: form.email, password: form.password, role };
@@ -146,14 +185,14 @@ function LoginPage() {
     <Page>
       <HeroPanel>
         <Brand><span>🐾</span> Petlify</Brand>
-        <HeroTitle>Gestão leve para pet shops modernos.</HeroTitle>
+        <HeroTitle>Uma plataforma para vários pet shops.</HeroTitle>
         <HeroText>
-          Organize agenda, pets, vacinação, planos, equipe e financeiro em uma plataforma web simples, responsiva e pronta para demonstração.
+          O Petlify agora funciona como SaaS multi-tenant: cada pet shop tem seus próprios clientes, pets, agenda, equipe e financeiro isolados dos demais.
         </HeroText>
         <FeatureGrid>
-          <Feature><strong>Agenda</strong><span>Cliente agenda, equipe acompanha.</span></Feature>
-          <Feature><strong>Saúde</strong><span>Carteirinha digital por pet.</span></Feature>
-          <Feature><strong>Gestão</strong><span>Dono visualiza equipe e receita.</span></Feature>
+          <Feature><strong>Multi-tenant</strong><span>Cada loja enxerga apenas seus dados.</span></Feature>
+          <Feature><strong>Planos fixos</strong><span>Básico, Premium e Premium Plus para toda a plataforma.</span></Feature>
+          <Feature><strong>Cadastro aberto</strong><span>O dono cria o próprio pet shop no sistema.</span></Feature>
         </FeatureGrid>
       </HeroPanel>
 
@@ -163,35 +202,62 @@ function LoginPage() {
           <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => { setMode('register'); setPending2fa(false); }}>Criar conta</button>
         </ModeTabs>
 
-        <RoleGrid>
-          {roles.map((item) => (
-            <RoleButton key={item.value} type="button" active={role === item.value} onClick={() => setRole(item.value)}>
-              <strong>{item.label}</strong>
-              <span>{item.hint}</span>
-            </RoleButton>
-          ))}
-        </RoleGrid>
+        {mode !== 'forgot' && (
+          <RoleGrid>
+            {roles.map((item) => (
+              <RoleButton key={item.value} type="button" active={role === item.value} onClick={() => changeRole(item.value)}>
+                <strong>{item.label}</strong>
+                <span>{item.hint}</span>
+              </RoleButton>
+            ))}
+          </RoleGrid>
+        )}
 
-        <DevBar>
-          {devAccounts.map((account) => (
-            <button key={account.email} type="button" onClick={() => applyDevAccount(account)}>{account.label}</button>
-          ))}
-        </DevBar>
+        {mode === 'login' && (
+          <DevBar>
+            {devAccounts.map((account) => (
+              <button key={account.email} type="button" onClick={() => applyDevAccount(account)}>{account.label}</button>
+            ))}
+          </DevBar>
+        )}
 
         <form onSubmit={handleSubmit}>
           {mode === 'register' && (
             <>
               <Field><span>Nome completo</span><input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} required /></Field>
-              <Field><span>CPF</span><input value={form.cpf} onChange={(event) => setForm((prev) => ({ ...prev, cpf: event.target.value }))} placeholder="Opcional no MVP" /></Field>
+              <Field><span>CPF</span><input value={form.cpf} onChange={(event) => setForm((prev) => ({ ...prev, cpf: event.target.value }))} placeholder="Obrigatório no produto final" /></Field>
               <Field><span>Telefone</span><input value={form.phone} onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))} placeholder="(48) 99999-9999" /></Field>
             </>
           )}
 
-          <Field><span>E-mail</span><input type="email" value={form.email} onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))} required /></Field>
-          <Field><span>Senha</span><input type="password" value={form.password} onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))} required /></Field>
+          {mode === 'register' && role === 'dono' && (
+            <TenantBox>
+              <strong>Cadastrar meu Pet Shop</strong>
+              <small>Esse fluxo cria uma nova loja/tenant e isola os dados dela dos demais Pet Shops.</small>
+              <Field><span>Nome do estabelecimento</span><input value={form.storeName} onChange={(event) => setForm((prev) => ({ ...prev, storeName: event.target.value }))} placeholder="Ex.: Pet Shop da Maria" required /></Field>
+              <Field><span>Endereço</span><input value={form.storeAddress} onChange={(event) => setForm((prev) => ({ ...prev, storeAddress: event.target.value }))} placeholder="Rua, número, bairro" /></Field>
+              <Field><span>Identificador do convite</span><input value={form.storeKey} onChange={(event) => setForm((prev) => ({ ...prev, storeKey: event.target.value }))} placeholder="petshop-da-maria" /></Field>
+            </TenantBox>
+          )}
 
-          {(role === 'funcionario' || role === 'dono') && mode === 'register' && (
-            <Field><span>Chave da loja</span><input value={form.storeKey} onChange={(event) => setForm((prev) => ({ ...prev, storeKey: event.target.value }))} required /></Field>
+          {mode === 'register' && role === 'cliente' && (
+            <Field>
+              <span>Pet Shop onde você será atendido</span>
+              <select value={form.storeKey} onChange={(event) => setForm((prev) => ({ ...prev, storeKey: event.target.value }))} required>
+                {stores.length === 0 && <option value="default">Petlify Centro</option>}
+                {stores.map((store) => <option key={store.tenant_key} value={store.tenant_key}>{store.name}</option>)}
+              </select>
+            </Field>
+          )}
+
+          {mode === 'register' && role === 'funcionario' && (
+            <Field><span>Chave do Pet Shop</span><input value={form.storeKey} onChange={(event) => setForm((prev) => ({ ...prev, storeKey: event.target.value }))} placeholder="Ex.: default ou petshop-da-maria" required /></Field>
+          )}
+
+          <Field><span>E-mail</span><input type="email" value={form.email} onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))} required /></Field>
+
+          {mode !== 'forgot' && (
+            <Field><span>Senha</span><input type="password" value={form.password} onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))} required /></Field>
           )}
 
           {pending2fa && (
@@ -210,10 +276,10 @@ function LoginPage() {
 
           {(message || error) && <Feedback error={!!error}>{error || message}</Feedback>}
 
-          <SubmitButton type="submit" disabled={loading}>{loading ? <Spinner size="20px" /> : pending2fa ? 'Verificar código' : mode === 'register' ? 'Criar conta' : 'Entrar'}</SubmitButton>
+          <SubmitButton type="submit" disabled={loading}>{loading ? <Spinner size="20px" /> : pending2fa ? 'Verificar código' : mode === 'register' ? 'Criar conta' : mode === 'forgot' ? 'Enviar recuperação' : 'Entrar'}</SubmitButton>
         </form>
 
-        <ForgotButton type="button" onClick={() => { setMode('forgot'); setPending2fa(false); }}>Esqueci minha senha</ForgotButton>
+        <ForgotButton type="button" onClick={() => { setMode(mode === 'forgot' ? 'login' : 'forgot'); setPending2fa(false); }}>{mode === 'forgot' ? 'Voltar ao login' : 'Esqueci minha senha'}</ForgotButton>
       </AuthCard>
     </Page>
   );
@@ -375,13 +441,24 @@ const DevBar = styled.div`
   }
 `;
 
+const TenantBox = styled.div`
+  padding: 16px;
+  border-radius: 22px;
+  background: #F8FCFF;
+  border: 1px dashed #BED9E8;
+  display: grid;
+  gap: 12px;
+
+  small { color: #64748B; }
+`;
+
 const Field = styled.label`
   display: grid;
   gap: 7px;
   font-weight: 800;
   color: #17324D;
 
-  input {
+  input, select {
     width: 100%;
     min-height: 50px;
     border: 1px solid #DDEAF3;

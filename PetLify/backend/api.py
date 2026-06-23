@@ -3,7 +3,6 @@ from decimal import Decimal, InvalidOperation
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_
-from sqlalchemy.exc import IntegrityError
 from models import (
     User,
     Store,
@@ -18,7 +17,8 @@ from models import (
 )
 from extensions import db
 from utils import role_required, tenant_required, audit_log
-from auth import normalize_cpf, password_is_valid
+from auth import normalize_cpf, password_is_valid, slugify
+from catalog import catalog_payload, normalize_plan_name, find_catalog_item, catalog_amount
 
 api_bp = Blueprint('api', __name__)
 
@@ -44,6 +44,23 @@ def parse_money(value):
         return Decimal(str(value)).quantize(Decimal('0.01'))
     except (InvalidOperation, TypeError):
         raise ValueError('Valor inválido')
+
+
+@api_bp.route('/catalog', methods=['GET'])
+def get_catalog():
+    """Tabela centralizada da plataforma: os mesmos planos e valores para todos os Pet Shops."""
+    return jsonify(catalog_payload())
+
+
+@api_bp.route('/stores', methods=['GET'])
+def list_public_stores():
+    """Busca pública de Pet Shops para vincular clientes ao tenant correto no cadastro."""
+    search = (request.args.get('search') or '').strip()
+    query = Store.query
+    if search:
+        query = query.filter(or_(Store.name.ilike(f'%{search}%'), Store.tenant_key.ilike(f'%{slugify(search)}%')))
+    stores = query.order_by(Store.name.asc()).limit(50).all()
+    return jsonify([store.to_public_dict() for store in stores])
 
 
 @api_bp.route('/me', methods=['GET'])
@@ -89,8 +106,11 @@ def update_current_user():
     user.phone = (data.get('phone') or '').strip() or None
     user.birth_date = (data.get('birth_date') or '').strip() or None
 
-    if user.role == Role.OWNER and data.get('store_name'):
-        user.store.name = data['store_name'].strip()
+    if user.role == Role.OWNER:
+        if data.get('store_name'):
+            user.store.name = data['store_name'].strip()
+        if 'store_address' in data:
+            user.store.address = (data.get('store_address') or '').strip() or None
 
     db.session.commit()
     audit_log(user.id, user.store_id, 'UPDATE', 'User', user.id, 'Perfil atualizado pelo usuário')
@@ -139,16 +159,17 @@ def create_pet():
     if any(not data.get(field) for field in required):
         return jsonify({'error': 'Dados obrigatórios faltando'}), 400
 
+    species = data.get('species', 'Cão')
     pet = Pet(
         store_id=user.store_id,
         owner_id=owner_id,
         name=data.get('name', '').strip(),
-        species=data.get('species', 'Cão'),
+        species=species,
         breed=data.get('breed', '').strip(),
         size=data.get('size', '').strip(),
         age=int(data.get('age') or 0),
-        plan=data.get('plan') or None,
-        photo_icon=data.get('photo_icon') or ('🐶' if data.get('species') != 'Gato' else '🐱'),
+        plan=normalize_plan_name(data.get('plan')),
+        photo_icon=data.get('photo_icon') or ('🐱' if species == 'Gato' else '🐶'),
     )
     db.session.add(pet)
     db.session.commit()
@@ -171,7 +192,8 @@ def update_pet(pet_id):
     pet.breed = data.get('breed', pet.breed)
     pet.size = data.get('size', pet.size)
     pet.age = int(data.get('age', pet.age))
-    pet.plan = data.get('plan', pet.plan)
+    if 'plan' in data:
+        pet.plan = normalize_plan_name(data.get('plan'))
     db.session.commit()
     audit_log(user.id, user.store_id, 'UPDATE', 'Pet', pet.id, 'Dados do pet atualizados')
     return jsonify(pet.to_dict(include_owner=True))
@@ -186,7 +208,7 @@ def list_vaccine_records():
 
     query = VaccineRecord.query.join(Pet)
     if user.role == Role.CLIENT:
-        query = query.filter(Pet.owner_id == user.id)
+        query = query.filter(Pet.owner_id == user.id, Pet.store_id == user.store_id)
     else:
         query = query.filter(Pet.store_id == user.store_id)
     if pet_id:
@@ -269,7 +291,10 @@ def list_appointments():
         query = query.filter_by(client_id=user.id)
     status = request.args.get('status')
     if status:
-        query = query.filter_by(status=AppointmentStatus(status))
+        try:
+            query = query.filter_by(status=AppointmentStatus(status))
+        except ValueError:
+            return jsonify({'error': 'Status inválido'}), 400
     appointments = query.order_by(Appointment.scheduled_at.asc()).all()
     return jsonify([appointment.to_dict() for appointment in appointments])
 
@@ -321,7 +346,10 @@ def update_appointment(appointment_id):
         return jsonify({'error': 'Cliente pode apenas cancelar agendamento'}), 403
 
     if data.get('status'):
-        appointment.status = AppointmentStatus(data['status'])
+        try:
+            appointment.status = AppointmentStatus(data['status'])
+        except ValueError:
+            return jsonify({'error': 'Status inválido'}), 400
     if data.get('scheduled_at'):
         try:
             appointment.scheduled_at = parse_datetime(data['scheduled_at'], 'Data e horário')
@@ -340,11 +368,15 @@ def update_appointment(appointment_id):
 def create_payment():
     user = current_user()
     data = request.get_json() or {}
+
     try:
         method = PaymentMethod(data.get('method'))
-        amount = parse_money(data.get('amount'))
-    except (ValueError, KeyError) as exc:
-        return jsonify({'error': str(exc)}), 400
+    except (ValueError, KeyError):
+        return jsonify({'error': 'Forma de pagamento inválida'}), 400
+
+    catalog_item = find_catalog_item(data.get('item_id'), data.get('item_name'))
+    if not catalog_item:
+        return jsonify({'error': 'Item fora da tabela padrão da plataforma'}), 400
 
     client_id = data.get('client_id') or user.id
     if user.role == Role.CLIENT:
@@ -353,14 +385,30 @@ def create_payment():
     if not client:
         return jsonify({'error': 'Cliente não encontrado'}), 404
 
+    appointment_id = data.get('appointment_id')
+    if appointment_id:
+        appointment = Appointment.query.filter_by(id=appointment_id, store_id=user.store_id).first()
+        if not appointment:
+            return jsonify({'error': 'Agendamento não encontrado para esta loja'}), 404
+
+    pet_id = data.get('pet_id')
+    if catalog_item['type'] == 'Plano mensal':
+        if not pet_id:
+            return jsonify({'error': 'Planos mensais precisam ser vinculados a um pet'}), 400
+        pet = Pet.query.filter_by(id=pet_id, store_id=user.store_id).first()
+        if not pet or (user.role == Role.CLIENT and pet.owner_id != user.id):
+            return jsonify({'error': 'Pet não encontrado para vincular o plano'}), 404
+        pet.plan = catalog_item['name']
+
     payment = Payment(
         store_id=user.store_id,
-        appointment_id=data.get('appointment_id'),
+        appointment_id=appointment_id,
         client_id=client.id,
         method=method,
-        amount=amount,
-        item_name=data.get('item_name') or 'Compra Petlify',
-        item_type=data.get('item_type') or 'Serviço',
+        amount=catalog_amount(catalog_item),
+        item_id=catalog_item['id'],
+        item_name=catalog_item['display_name'],
+        item_type=catalog_item['type'],
     )
 
     if method == PaymentMethod.CASH:
@@ -373,6 +421,8 @@ def create_payment():
         if not confirmer:
             return jsonify({'error': 'Senha do funcionário inválida para pagamento em dinheiro'}), 401
         payment.confirmed_by_employee_id = confirmer.id
+        payment.confirmed_at = datetime.utcnow()
+    else:
         payment.confirmed_at = datetime.utcnow()
 
     db.session.add(payment)

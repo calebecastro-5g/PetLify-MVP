@@ -4,6 +4,7 @@ import DashboardShell from '../components/DashboardShell';
 import ProfileEditor from '../components/ProfileEditor';
 import Spinner from '../components/Spinner';
 import { apiFetch } from '../lib/api';
+import { platformPlans, platformServices } from '../lib/catalog';
 
 type Employee = { id: number; name: string; email: string; role: string; is_active: boolean; phone?: string | null };
 type Pet = { id: number; name: string; species: string; plan?: string | null; owner_name?: string | null };
@@ -128,11 +129,12 @@ function OwnerDashboard() {
   return (
     <DashboardShell
       roleLabel="Área do Dono"
-      title="Gestão completa do pet shop"
-      subtitle="Acompanhe receita, planos, agenda, equipe e rastreabilidade operacional em um painel executivo."
+      title="Gestão da sua loja no Petlify"
+      subtitle="Acompanhe apenas os dados do seu Pet Shop. Clientes, pets, agenda, equipe e financeiro ficam isolados dos demais estabelecimentos."
       navItems={[
         { label: 'Meu perfil', href: '#perfil', icon: '👤' },
         { label: 'Resumo', href: '#resumo', icon: '📊' },
+        { label: 'Tabela fixa', href: '#catalogo', icon: '💎' },
         { label: 'Equipe', href: '#equipe', icon: '🧑‍💼' },
         { label: 'Financeiro', href: '#financeiro', icon: '💳' },
         { label: 'Agenda', href: '#agenda', icon: '📅' },
@@ -152,6 +154,27 @@ function OwnerDashboard() {
             <StatCard><span>Planos ativos</span><strong>{planCount}</strong><small>Planos vinculados aos pets.</small></StatCard>
             <StatCard><span>Agenda pendente</span><strong>{pendingAppointments}</strong><small>{completedAppointments} atendimentos concluídos.</small></StatCard>
           </StatsGrid>
+
+          <Section id="catalogo">
+            <SectionHeader><div><Eyebrow>Valores padronizados</Eyebrow><h2>Tabela fixa da plataforma</h2></div></SectionHeader>
+            <CatalogIntro>Estes preços são iguais para todos os Pet Shops cadastrados no Petlify. A loja não cria planos próprios nem altera os valores nesta fase do MVP.</CatalogIntro>
+            <PriceGrid>
+              {platformPlans.map((plan) => (
+                <PriceCard key={plan.id}>
+                  <strong>{plan.displayName}</strong>
+                  <span>{plan.frequency}</span>
+                  <Money>{formatCurrency(plan.amount)}/mês</Money>
+                </PriceCard>
+              ))}
+              {platformServices.map((service) => (
+                <PriceCard key={service.id}>
+                  <strong>{service.displayName}</strong>
+                  <span>{service.type}</span>
+                  <Money>{formatCurrency(service.amount)}</Money>
+                </PriceCard>
+              ))}
+            </PriceGrid>
+          </Section>
 
           <Section id="equipe">
             <SectionHeader><div><Eyebrow>Gestão de acesso</Eyebrow><h2>Equipe</h2></div></SectionHeader>
@@ -240,4 +263,7 @@ const CardInfo = styled.div`display:grid;gap:4px;span,small{color:#64748B;}`;
 const Money = styled.strong`font-size:1.2rem;color:#256D85;white-space:nowrap;`;
 const StatusPill = styled.span`padding:8px 12px;border-radius:999px;background:#E7F5FF;color:#256D85;font-weight:900;white-space:nowrap;`;
 const EmptyState = styled.div`padding:22px;border-radius:24px;background:#F8FCFF;border:1px dashed #BED9E8;display:grid;gap:6px;span{color:#64748B;}`;
+const CatalogIntro = styled.p`margin:0 0 16px;color:#64748B;line-height:1.6;`;
+const PriceGrid = styled.div`display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;`;
+const PriceCard = styled.article`padding:18px;border-radius:22px;background:#F8FCFF;border:1px solid #DDEAF3;display:grid;gap:6px;span{color:#64748B;}`;
 const Feedback = styled.div<{ error: boolean }>`padding:14px 16px;border-radius:18px;background:${({ error }) => error ? '#FFE8EA' : '#DDF7F2'};color:${({ error }) => error ? '#A32435' : '#256D85'};font-weight:900;`;

@@ -15,6 +15,8 @@ type Profile = {
   is_active: boolean;
   store_name?: string | null;
   store_key?: string | null;
+  store_address?: string | null;
+  invite_path?: string | null;
 };
 
 type ProfileEditorProps = {
@@ -48,6 +50,7 @@ function ProfileEditor({ description }: ProfileEditorProps) {
     phone: '',
     birthDate: '',
     storeName: '',
+    storeAddress: '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
@@ -70,6 +73,7 @@ function ProfileEditor({ description }: ProfileEditorProps) {
         phone: data.phone || '',
         birthDate: data.birth_date || '',
         storeName: data.store_name || '',
+        storeAddress: data.store_address || '',
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
@@ -94,6 +98,7 @@ function ProfileEditor({ description }: ProfileEditorProps) {
         phone: profile.phone || '',
         birthDate: profile.birth_date || '',
         storeName: profile.store_name || '',
+        storeAddress: profile.store_address || '',
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
@@ -124,7 +129,10 @@ function ProfileEditor({ description }: ProfileEditorProps) {
         phone: form.phone,
         birth_date: form.birthDate,
       };
-      if (profile?.role === 'dono') payload.store_name = form.storeName;
+      if (profile?.role === 'dono') {
+        payload.store_name = form.storeName;
+        payload.store_address = form.storeAddress;
+      }
       if (form.newPassword) {
         payload.current_password = form.currentPassword;
         payload.new_password = form.newPassword;
@@ -149,6 +157,7 @@ function ProfileEditor({ description }: ProfileEditorProps) {
         phone: updated.phone || '',
         birthDate: updated.birth_date || '',
         storeName: updated.store_name || '',
+        storeAddress: updated.store_address || '',
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
@@ -208,7 +217,10 @@ function ProfileEditor({ description }: ProfileEditorProps) {
           <InfoItem><span>CPF</span><strong>{profile.cpf || 'Não informado'}</strong></InfoItem>
           <InfoItem><span>Telefone</span><strong>{profile.phone || 'Não informado'}</strong></InfoItem>
           <InfoItem><span>Loja</span><strong>{profile.store_name || 'Petlify Pet Shop'}</strong></InfoItem>
+          <InfoItem><span>Chave da loja</span><strong>{profile.store_key || 'default'}</strong></InfoItem>
+          <InfoItem><span>Endereço</span><strong>{profile.store_address || 'Não informado'}</strong></InfoItem>
           <InfoItem><span>Status</span><strong>{profile.is_active ? 'Ativo' : 'Inativo'}</strong></InfoItem>
+          {profile.role === 'dono' && <InfoItem><span>Convite do cliente</span><strong>{profile.invite_path || '/cadastro/default'}</strong></InfoItem>}
         </InfoGrid>
       ) : (
         <Form onSubmit={handleSubmit}>
@@ -218,7 +230,10 @@ function ProfileEditor({ description }: ProfileEditorProps) {
           <Field><span>Telefone</span><input value={form.phone} onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))} placeholder="(48) 99999-9999" /></Field>
           <Field><span>Data de nascimento</span><input type="date" value={form.birthDate} onChange={(event) => setForm((prev) => ({ ...prev, birthDate: event.target.value }))} /></Field>
           {profile.role === 'dono' && (
-            <Field><span>Nome da loja</span><input value={form.storeName} onChange={(event) => setForm((prev) => ({ ...prev, storeName: event.target.value }))} /></Field>
+            <>
+              <Field><span>Nome da loja</span><input value={form.storeName} onChange={(event) => setForm((prev) => ({ ...prev, storeName: event.target.value }))} /></Field>
+              <Field><span>Endereço da loja</span><input value={form.storeAddress} onChange={(event) => setForm((prev) => ({ ...prev, storeAddress: event.target.value }))} /></Field>
+            </>
           )}
 
           <PasswordBox>

@@ -17,7 +17,8 @@ def _normalize_database_url(url: str) -> str:
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'petlify-dev-secret')
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'petlify-dev-jwt-secret')
-    DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///instance/petlify.db')
+    DEFAULT_DATABASE_URL = 'sqlite:////tmp/petlify.db' if os.environ.get('FLASK_ENV') == 'production' else 'sqlite:///instance/petlify.db'
+    DATABASE_URL = os.environ.get('DATABASE_URL', DEFAULT_DATABASE_URL)
     SQLALCHEMY_DATABASE_URI = _normalize_database_url(DATABASE_URL)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=8)

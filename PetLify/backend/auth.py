@@ -1,5 +1,6 @@
 import random
 import re
+import unicodedata
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import create_access_token, create_refresh_token
@@ -26,6 +27,22 @@ def password_is_valid(password: str) -> bool:
     return bool(re.search(r'[A-ZÁÉÍÓÚÂÊÔÃÕÇ]', password)) and bool(re.search(r'\d', password))
 
 
+def slugify(value: str) -> str:
+    value = unicodedata.normalize('NFKD', value or '').encode('ascii', 'ignore').decode('ascii')
+    value = re.sub(r'[^a-zA-Z0-9]+', '-', value).strip('-').lower()
+    return value or 'pet-shop'
+
+
+def unique_store_key(base: str) -> str:
+    slug = slugify(base)
+    candidate = slug
+    index = 2
+    while Store.query.filter_by(tenant_key=candidate).first():
+        candidate = f'{slug}-{index}'
+        index += 1
+    return candidate
+
+
 def build_tokens(user: User):
     identity = {'user_id': user.id, 'store_id': user.store_id, 'role': user.role.value}
     return {
@@ -33,16 +50,41 @@ def build_tokens(user: User):
         'refresh_token': create_refresh_token(identity=identity),
         'role': user.role.value,
         'name': user.name,
+        'store_name': user.store.name if user.store else None,
+        'store_key': user.store.tenant_key if user.store else None,
     }
 
 
 def get_or_create_default_store(store_key='default'):
     store = Store.query.filter_by(tenant_key=store_key).first()
     if not store and store_key == 'default':
-        store = Store(name='Petlify Pet Shop', tenant_key='default')
+        store = Store(name='Petlify Pet Shop', tenant_key='default', address='Loja de demonstração')
         db.session.add(store)
         db.session.flush()
     return store
+
+
+def resolve_store_for_register(role: Role, data: dict):
+    if role == Role.OWNER:
+        store_name = (data.get('store_name') or '').strip() or f"Pet Shop de {(data.get('name') or 'Dono').strip()}"
+        requested_key = (data.get('store_key') or '').strip()
+        if requested_key and Store.query.filter_by(tenant_key=slugify(requested_key)).first():
+            return None, 'Esse identificador de Pet Shop já está em uso. Tente outro nome.'
+        tenant_key = slugify(requested_key) if requested_key else unique_store_key(store_name)
+        store = Store(
+            name=store_name,
+            tenant_key=tenant_key,
+            address=(data.get('store_address') or '').strip() or None,
+        )
+        db.session.add(store)
+        db.session.flush()
+        return store, None
+
+    store_key = slugify(data.get('store_key') or 'default')
+    store = Store.query.filter_by(tenant_key=store_key).first()
+    if not store:
+        return None, 'Pet Shop não encontrado. Confira a chave ou busque a loja na tela de cadastro.'
+    return store, None
 
 
 @auth_bp.route('/register', methods=['POST'])
@@ -67,20 +109,16 @@ def register():
     if not password_is_valid(password):
         return jsonify({'error': 'Senha deve ter 8 a 64 caracteres, com 1 maiúscula e 1 número'}), 400
 
-    store_key = data.get('store_key') or 'default'
-    if role != Role.CLIENT and not store_key:
-        return jsonify({'error': 'Chave da loja obrigatória para equipe'}), 400
-
-    store = get_or_create_default_store(store_key)
-    if not store:
-        return jsonify({'error': 'Loja não encontrada'}), 404
-
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'E-mail já está em uso'}), 409
 
     cpf = normalize_cpf(data.get('cpf'))
     if cpf and User.query.filter_by(cpf=cpf).first():
         return jsonify({'error': 'CPF já cadastrado'}), 409
+
+    store, store_error = resolve_store_for_register(role, data)
+    if store_error:
+        return jsonify({'error': store_error}), 409 if role == Role.OWNER else 404
 
     user = User(
         store_id=store.id,
@@ -98,6 +136,8 @@ def register():
     db.session.commit()
 
     audit_log(user.id, store.id, 'REGISTER', 'User', user.id, f'Cadastro realizado como {role.value}')
+    if role == Role.OWNER:
+        audit_log(user.id, store.id, 'CREATE', 'Store', store.id, f'Pet Shop criado com chave {store.tenant_key}')
     return jsonify(build_tokens(user)), 201
 
 

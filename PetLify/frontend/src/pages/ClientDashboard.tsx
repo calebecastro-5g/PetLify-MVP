@@ -5,6 +5,7 @@ import DashboardShell from '../components/DashboardShell';
 import ProfileEditor from '../components/ProfileEditor';
 import Spinner from '../components/Spinner';
 import { apiFetch } from '../lib/api';
+import { formatCurrency, platformPlans, platformServices } from '../lib/catalog';
 
 type Pet = {
   id: number;
@@ -62,6 +63,10 @@ const initialAppointmentForm = {
 
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function planLabel(plan?: string | null) {
+  return plan ? `Plano ${plan}` : 'Sem plano';
 }
 
 function ClientDashboard() {
@@ -185,8 +190,8 @@ function ClientDashboard() {
   return (
     <DashboardShell
       roleLabel="Área do Cliente"
-      title="Seu pet shop na palma da mão"
-      subtitle="Cadastre seus pets, marque serviços, acompanhe vacinas e escolha planos mensais em poucos cliques."
+      title="Seu pet shop conectado ao Petlify"
+      subtitle="Acesse a loja à qual sua conta está vinculada, cadastre pets, acompanhe vacinas e contrate planos com tabela padronizada da plataforma."
       notificationCount={notifications.length}
       actions={<CartButton type="button" onClick={() => navigate('/checkout')} title="Checkout" aria-label="Ir para o checkout">🛒</CartButton>}
       navItems={[
@@ -204,7 +209,7 @@ function ClientDashboard() {
         <>
           {(feedback || error) && <Feedback error={!!error}>{error || feedback}</Feedback>}
 
-          <ProfileEditor description="Atualize seus dados de contato e mantenha o pet shop com informações corretas para agendamentos e lembretes." />
+          <ProfileEditor description="Sua conta pertence a um Pet Shop específico. Atualize seus dados para agendamentos, lembretes e atendimento." />
 
           <Section id="notificacoes">
             <SectionHeader>
@@ -243,7 +248,7 @@ function ClientDashboard() {
                 <Field><span>Raça</span><select value={petForm.breed} onChange={(event) => setPetForm((prev) => ({ ...prev, breed: event.target.value }))}><option>SRD</option><option>Shih-tzu</option><option>Poodle</option><option>Golden Retriever</option><option>Bulldog</option><option>Persa</option><option>Outra</option></select></Field>
                 <Field><span>Porte</span><select value={petForm.size} onChange={(event) => setPetForm((prev) => ({ ...prev, size: event.target.value }))}><option>Pequeno</option><option>Médio</option><option>Grande</option></select></Field>
                 <Field><span>Idade</span><input type="number" min="0" value={petForm.age} onChange={(event) => setPetForm((prev) => ({ ...prev, age: event.target.value }))} required /></Field>
-                <Field><span>Plano mensal</span><select value={petForm.plan} onChange={(event) => setPetForm((prev) => ({ ...prev, plan: event.target.value }))}><option>Sem plano</option><option>Plano Básico</option><option>Plano Premium</option><option>Plano VIP</option></select></Field>
+                <Field><span>Plano mensal</span><select value={petForm.plan} onChange={(event) => setPetForm((prev) => ({ ...prev, plan: event.target.value }))}><option>Sem plano</option>{platformPlans.map((plan) => <option key={plan.id} value={plan.name}>{plan.displayName}</option>)}</select></Field>
                 <ActionButton type="submit" disabled={savingPet}>{savingPet ? <Spinner size="18px" /> : 'Salvar Pet'}</ActionButton>
               </FormCard>
             )}
@@ -258,7 +263,7 @@ function ClientDashboard() {
                     <strong>{pet.name}</strong>
                     <span>{pet.species} • {pet.breed}</span>
                     <small>{pet.size} • {pet.age} anos</small>
-                    <PlanBadge>{pet.plan || 'Sem plano'}</PlanBadge>
+                    <PlanBadge>{planLabel(pet.plan)}</PlanBadge>
                   </PetCard>
                 ))}
               </CardGrid>
@@ -280,14 +285,14 @@ function ClientDashboard() {
             {showAppointmentForm && (
               <FormCard onSubmit={handleCreateAppointment}>
                 <Field><span>Pet</span><select value={appointmentForm.petId} onChange={(event) => setAppointmentForm((prev) => ({ ...prev, petId: event.target.value }))} required>{petOptions.map((pet) => <option key={pet.value} value={pet.value}>{pet.label}</option>)}</select></Field>
-                <Field><span>Serviço</span><select value={appointmentForm.service} onChange={(event) => setAppointmentForm((prev) => ({ ...prev, service: event.target.value }))}><option>Banho</option><option>Tosa</option><option>Banho e Tosa</option><option>Consulta</option><option>Vacinação</option></select></Field>
+                <Field><span>Serviço</span><select value={appointmentForm.service} onChange={(event) => setAppointmentForm((prev) => ({ ...prev, service: event.target.value }))}>{platformServices.map((service) => <option key={service.id}>{service.name}</option>)}</select></Field>
                 <Field><span>Data e horário</span><input type="datetime-local" value={appointmentForm.scheduledAt} onChange={(event) => setAppointmentForm((prev) => ({ ...prev, scheduledAt: event.target.value }))} required /></Field>
                 <ActionButton type="submit" disabled={savingAppointment}>{savingAppointment ? <Spinner size="18px" /> : 'Agendar'}</ActionButton>
               </FormCard>
             )}
 
             {appointments.length === 0 ? (
-              <EmptyState><strong>Nenhum agendamento encontrado.</strong><span>Após cadastrar um pet, clique em Novo Agendamento para marcar banho, tosa ou consulta.</span></EmptyState>
+              <EmptyState><strong>Nenhum agendamento encontrado.</strong><span>Após cadastrar um pet, clique em Novo Agendamento para marcar um serviço avulso.</span></EmptyState>
             ) : (
               <List>
                 {appointments.map((item) => (
@@ -324,14 +329,18 @@ function ClientDashboard() {
           <Section id="planos">
             <SectionHeader>
               <div>
-                <Eyebrow>Retenção</Eyebrow>
+                <Eyebrow>Valores fixos da plataforma</Eyebrow>
                 <h2>Planos Mensais</h2>
               </div>
               <ActionButton type="button" onClick={() => navigate('/checkout')}>Ver planos</ActionButton>
             </SectionHeader>
             <CardGrid>
-              {['Plano Básico', 'Plano Premium', 'Plano VIP'].map((plan) => (
-                <PlanCard key={plan}><strong>{plan}</strong><span>Pacotes mensais vinculados ao pet para previsibilidade e praticidade.</span></PlanCard>
+              {platformPlans.map((plan) => (
+                <PlanCard key={plan.id}>
+                  <strong>{plan.displayName}</strong>
+                  <span>{plan.frequency}</span>
+                  <PlanPrice>{formatCurrency(plan.amount)}/mês</PlanPrice>
+                </PlanCard>
               ))}
             </CardGrid>
           </Section>
@@ -454,6 +463,10 @@ const PetCard = styled.article`
 
 const PlanCard = styled(PetCard)`
   background: linear-gradient(135deg, #E7F5FF, #FFFFFF);
+`;
+
+const PlanPrice = styled.strong`
+  color: #256D85;
 `;
 
 const Icon = styled.div`

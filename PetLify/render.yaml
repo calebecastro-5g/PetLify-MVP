@@ -17,7 +17,7 @@ services:
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
-        value: sqlite:///instance/petlify.db
+        value: sqlite:////tmp/petlify.db
       - key: CORS_ORIGINS
         value: '*'
       - key: BCRYPT_LOG_ROUNDS

@@ -249,7 +249,7 @@ function EmployeeDashboard() {
                     <span>{pet.species} • {pet.breed}</span>
                     <small>Tutor: {pet.owner_name || 'Não informado'}</small>
                     <small>CPF: {pet.owner_cpf || 'Não informado'}</small>
-                    <PlanBadge>{pet.plan || 'Sem plano'}</PlanBadge>
+                    <PlanBadge>{pet.plan ? `Plano ${pet.plan}` : 'Sem plano'}</PlanBadge>
                   </PetCard>
                 ))}
               </PetGrid>
@@ -288,7 +288,7 @@ function EmployeeDashboard() {
               <div><Eyebrow>Planos por pet</Eyebrow><h2>Visualização dos planos</h2></div>
             </SectionHeader>
             <PetGrid>
-              {pets.map((pet) => <PlanCard key={pet.id}><strong>{pet.name}</strong><span>{pet.owner_name}</span><PlanBadge>{pet.plan || 'Sem plano'}</PlanBadge></PlanCard>)}
+              {pets.map((pet) => <PlanCard key={pet.id}><strong>{pet.name}</strong><span>{pet.owner_name}</span><PlanBadge>{pet.plan ? `Plano ${pet.plan}` : 'Sem plano'}</PlanBadge></PlanCard>)}
             </PetGrid>
           </Section>
         </>

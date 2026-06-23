@@ -29,12 +29,22 @@ class Store(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), nullable=False)
     tenant_key = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    address = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     users = db.relationship('User', backref='store', lazy=True)
     pets = db.relationship('Pet', backref='store', lazy=True)
     appointments = db.relationship('Appointment', backref='store', lazy=True)
     payments = db.relationship('Payment', backref='store', lazy=True)
+
+    def to_public_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'tenant_key': self.tenant_key,
+            'address': self.address,
+            'invite_path': f'/cadastro/{self.tenant_key}',
+        }
 
 
 class User(db.Model):
@@ -80,6 +90,8 @@ class User(db.Model):
             'is_active': self.is_active,
             'store_name': self.store.name if self.store else None,
             'store_key': self.store.tenant_key if self.store else None,
+            'store_address': self.store.address if self.store else None,
+            'invite_path': f'/cadastro/{self.store.tenant_key}' if self.store else None,
         }
 
 
@@ -190,6 +202,7 @@ class Payment(db.Model):
     client_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     method = db.Column(db.Enum(PaymentMethod), nullable=False)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
+    item_id = db.Column(db.String(64), nullable=True)
     item_name = db.Column(db.String(128), nullable=True)
     item_type = db.Column(db.String(64), nullable=True)
     confirmed_by_employee_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
@@ -206,6 +219,7 @@ class Payment(db.Model):
             'client_name': self.client.name if self.client else 'Cliente',
             'method': self.method.value,
             'amount': float(self.amount),
+            'item_id': self.item_id,
             'item_name': self.item_name,
             'item_type': self.item_type,
             'confirmed_by_employee_id': self.confirmed_by_employee_id,
