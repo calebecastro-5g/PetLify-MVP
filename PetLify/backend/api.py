@@ -14,6 +14,9 @@ from models import (
     PaymentMethod,
     Role,
     AuditLog,
+    Plan,
+    Service,
+    Subscription,
 )
 from extensions import db
 from utils import role_required, tenant_required, audit_log
@@ -98,9 +101,9 @@ def appointment_billing_payload(appointment):
             'payment_item_id': payment.item_id,
             'payment_item_name': payment.item_name,
         })
-    elif appointment.pet and appointment.pet.plan:
+    elif appointment.subscription:
         data.update({
-            'billing_type': f'Plano {appointment.pet.plan}',
+            'billing_type': f'Plano {appointment.subscription.plan.name}',
             'payment_required': False,
             'payment_id': None,
             'payment_amount': 0,
@@ -121,6 +124,12 @@ def appointment_billing_payload(appointment):
 
 
 def delete_pet_with_dependents(pet):
+    for payment in Payment.query.filter_by(pet_id=pet.id, store_id=pet.store_id).all():
+        payment.subscription_id = None
+        payment.pet_id = None
+    for subscription in pet.subscriptions:
+        for payment in Payment.query.filter_by(subscription_id=subscription.id).all():
+            payment.subscription_id = None
     for appointment in Appointment.query.filter_by(pet_id=pet.id, store_id=pet.store_id).all():
         for payment in Payment.query.filter_by(appointment_id=appointment.id).all():
             payment.appointment_id = None
@@ -306,8 +315,7 @@ def update_pet(pet_id):
     pet.size = data.get('size', pet.size)
     pet.age = int(data.get('age', pet.age))
     # Plano é alterado apenas por pagamento no checkout.
-    if user.role != Role.CLIENT and 'plan' in data:
-        pet.plan = normalize_plan_name(data.get('plan'))
+    # A assinatura só pode ser alterada pelo fluxo de compra.
     db.session.commit()
     audit_log(user.id, user.store_id, 'UPDATE', 'Pet', pet.id, 'Dados do pet atualizados')
     return jsonify(pet.to_dict(include_owner=True))
@@ -508,11 +516,21 @@ def create_appointment():
     if not slot_is_available(user.store_id, pet, scheduled_at):
         return jsonify({'error': 'Horário indisponível para este Pet Shop. Escolha um dos horários livres.'}), 409
 
+    service = data.get('service') or 'Banho'
+    if not Service.query.filter_by(name=service).first():
+        return jsonify({'error': 'Serviço fora do catálogo da plataforma'}), 400
+    subscription = None
+    if data.get('billing_type') == 'Plano mensal':
+        subscription = pet.subscription_at(scheduled_at)
+        if not subscription or not subscription.plan.covers(service):
+            return jsonify({'error': 'O plano não cobre este serviço na data escolhida.'}), 400
+
     appointment = Appointment(
         store_id=user.store_id,
         client_id=pet.owner_id,
         pet_id=pet.id,
-        service=data.get('service') or 'Banho',
+        service=service,
+        subscription_id=subscription.id if subscription else None,
         scheduled_at=scheduled_at,
         status=AppointmentStatus.PENDING,
         notes=data.get('notes') or None,
@@ -550,6 +568,20 @@ def update_appointment(appointment_id):
         if not slot_is_available(user.store_id, appointment.pet, new_scheduled_at, appointment.id):
             return jsonify({'error': 'Horário indisponível para este Pet Shop. Escolha um dos horários livres.'}), 409
 
+    new_service = data.get('service', appointment.service)
+    if not Service.query.filter_by(name=new_service).first():
+        return jsonify({'error': 'Serviço fora do catálogo da plataforma'}), 400
+    plan_mode = data.get('billing_type') == 'Plano mensal' or (
+        'billing_type' not in data and appointment.subscription_id is not None
+    )
+    coverage_changed = any(field in data for field in ('service', 'scheduled_at', 'billing_type'))
+    subscription = (
+        appointment.pet.subscription_at(new_scheduled_at) if coverage_changed
+        else appointment.subscription
+    ) if plan_mode else None
+    if plan_mode and coverage_changed and (not subscription or not subscription.plan.covers(new_service)):
+        return jsonify({'error': 'O plano não cobre este serviço na data escolhida.'}), 400
+
     if data.get('status'):
         try:
             appointment.status = AppointmentStatus(data['status'])
@@ -559,14 +591,11 @@ def update_appointment(appointment_id):
     old_service = appointment.service
     appointment.scheduled_at = new_scheduled_at
     appointment.service = data.get('service', appointment.service)
+    appointment.subscription_id = subscription.id if subscription else None
     appointment.notes = data.get('notes', appointment.notes)
 
-    if data.get('billing_type') == 'Plano mensal':
-        for old_payment in Payment.query.filter_by(appointment_id=appointment.id).all():
-            db.session.delete(old_payment)
-        payment = None
-    else:
-        payment = Payment.query.filter_by(appointment_id=appointment.id).order_by(Payment.created_at.desc()).first()
+    # Pagamentos já registrados são preservados no histórico.
+    payment = Payment.query.filter_by(appointment_id=appointment.id).order_by(Payment.created_at.desc()).first()
 
     new_item = find_catalog_item(item_name=appointment.service)
     requires_payment_update = False
@@ -626,6 +655,12 @@ def create_payment():
         appointment = Appointment.query.filter_by(id=appointment_id, store_id=user.store_id).first()
         if not appointment:
             return jsonify({'error': 'Agendamento não encontrado para esta loja'}), 404
+        if user.role == Role.CLIENT and appointment.client_id != user.id:
+            return jsonify({'error': 'Permissão negada'}), 403
+        if catalog_item['type'] != 'Serviço avulso' or catalog_item['name'] != appointment.service:
+            return jsonify({'error': 'O pagamento deve corresponder ao serviço agendado.'}), 400
+        if appointment.subscription_id:
+            return jsonify({'error': 'Este agendamento já está coberto por uma assinatura.'}), 400
         client_id = appointment.client_id
     elif catalog_item['type'] == 'Serviço avulso':
         return jsonify({'error': 'Serviços avulsos só podem ser pagos durante o agendamento.'}), 400
@@ -639,24 +674,31 @@ def create_payment():
         return jsonify({'error': 'Cliente não encontrado'}), 404
 
     pet_id = data.get('pet_id')
+    pet = None
+    plan = None
     if catalog_item['type'] == 'Plano mensal':
         if not pet_id:
             return jsonify({'error': 'Planos mensais precisam ser vinculados a um pet'}), 400
         pet = Pet.query.filter_by(id=pet_id, store_id=user.store_id).first()
-        if not pet or (user.role == Role.CLIENT and pet.owner_id != user.id):
+        if not pet or pet.owner_id != client.id:
             return jsonify({'error': 'Pet não encontrado para vincular o plano'}), 404
-        pet.plan = catalog_item['name']
+        plan = db.session.get(Plan, catalog_item['id'])
+        if not plan:
+            return jsonify({'error': 'Plano não cadastrado no banco. Aplique as migrações.'}), 400
 
     payment = None
     if appointment_id:
         payment = Payment.query.filter_by(appointment_id=appointment_id).first()
 
+    # Resolve o preço antes de adicionar um pagamento incompleto à sessão.
+    # Uma consulta posterior pode disparar autoflush no SQLAlchemy.
+    official_amount = plan.amount if plan else db.session.get(Service, catalog_item['id']).amount
     if not payment:
         payment = Payment(store_id=user.store_id, appointment_id=appointment_id, client_id=client.id)
         db.session.add(payment)
 
     payment.method = method
-    payment.amount = catalog_amount(catalog_item)
+    payment.amount = official_amount
     payment.item_id = catalog_item['id']
     payment.item_name = catalog_item['display_name']
     payment.item_type = catalog_item['type']
@@ -669,11 +711,26 @@ def create_payment():
                 confirmer = candidate
                 break
         if not confirmer:
+            db.session.rollback()
             return jsonify({'error': 'Senha do funcionário inválida para pagamento em dinheiro'}), 401
         payment.confirmed_by_employee_id = confirmer.id
         payment.confirmed_at = datetime.utcnow()
     else:
         payment.confirmed_at = datetime.utcnow()
+
+    if plan:
+        now = payment.confirmed_at
+        for previous in Subscription.query.filter_by(pet_id=pet.id, store_id=user.store_id, status='active').all():
+            previous.status = 'replaced'
+        subscription = Subscription(
+            store_id=user.store_id, pet_id=pet.id, plan_id=plan.id,
+            starts_at=now, ends_at=now + timedelta(days=plan.duration_days),
+            status='active', source='purchase',
+        )
+        db.session.add(subscription)
+        db.session.flush()
+        payment.subscription_id = subscription.id
+        payment.pet_id = pet.id
 
     db.session.commit()
     audit_log(user.id, user.store_id, 'CREATE', 'Payment', payment.id, f'Pagamento registrado via {method.value}')
@@ -690,6 +747,19 @@ def list_payments():
         query = query.filter_by(client_id=user.id)
     payments = query.order_by(Payment.created_at.desc()).all()
     return jsonify([payment.to_dict() for payment in payments])
+
+
+@api_bp.route('/subscriptions', methods=['GET'])
+@jwt_required()
+@tenant_required
+def list_subscriptions():
+    user = current_user()
+    query = Subscription.query.join(Pet, Subscription.pet_id == Pet.id).filter(
+        Subscription.store_id == user.store_id, Pet.store_id == user.store_id,
+    )
+    if user.role == Role.CLIENT:
+        query = query.filter(Pet.owner_id == user.id)
+    return jsonify([item.to_dict() for item in query.order_by(Subscription.id.desc()).all()])
 
 
 @api_bp.route('/employees', methods=['GET'])
