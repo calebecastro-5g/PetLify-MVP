@@ -186,7 +186,11 @@ NODE_VERSION=20.15.1
 
 O esquema agora é versionado por Flask-Migrate/Alembic. Execute `flask --app app db upgrade` antes do seed. Consulte [o guia do banco](docs/banco-de-dados.md) para entender relacionamentos, migrações e próximos passos.
 
-A segunda etapa adicionou planos, serviços, benefícios e assinaturas com validade de 30 dias. Consulte [as regras e a explicação de assinaturas](docs/assinaturas.md). A validação de limites semanais e quinzenais ainda está pendente.
+Planos, serviços, benefícios e assinaturas têm validade de 30 dias. As cotas separadas por serviço já são aplicadas em blocos desde a contratação, com saldo exibido na área do cliente. Consulte [assinaturas](docs/assinaturas.md) e [cotas dos planos](docs/cotas-dos-planos.md).
+
+O esquema atual tem 12 tabelas de domínio, além de alembic_version, na revisão c83f9e205d16. As chaves compostas protegem os vínculos entre loja, tutor, pet, assinatura e pagamento. Em 30/09/2026, a validação aprovou 24 testes de backend em SQLite, o build TypeScript/Vite e a jornada principal pela interface; veja [o registro dos resultados](docs/validacao-jornada.md).
+
+A continuidade do grupo está em [CONTINUIDADE.md](docs/CONTINUIDADE.md). A ordem aprovada em 30/09/2026 está em [ROTEIRO.md](docs/ROTEIRO.md): consolidar, validar a jornada, corrigir horários, preparar persistência, automatizar verificações e completar a operação.
 
 No Render, os dados de demonstração só são inseridos quando `SEED_DEMO=true`. Deixe essa opção desligada para preservar contas reais.
 

@@ -1,6 +1,6 @@
 # PetLify — esquema e roteiro de estudo
 
-Registro de retomada: 24/09/2026. Este documento descreve os modelos locais atuais e propõe uma divisão de trabalho para revisão pelo grupo.
+Atualizado em 30/09/2026. Este documento explica os modelos atuais e propõe uma divisão de trabalho para revisão pelo grupo. A ordem de execução aprovada está em ROTEIRO.md.
 
 ## 1. Entender as três partes
 
@@ -10,7 +10,7 @@ Por exemplo: ao contratar um plano, a tela informa o pet e o plano escolhido. O 
 
 ## 2. Ler o esquema atual
 
-São 11 tabelas de domínio. `alembic_version` é uma tabela técnica adicional para acompanhar migrações.
+São 12 tabelas de domínio, incluindo subscription_limits. `alembic_version` é uma tabela técnica adicional para acompanhar migrações.
 
 | Grupo | Tabelas | Responsabilidade |
 | --- | --- | --- |
@@ -86,7 +86,7 @@ ORDER BY s.id DESC;
 
 ## 6. Dividir o trabalho simultâneo
 
-Proposta a confirmar com Calebe: Codex trabalha no banco, backend e testes; Claude trabalha no frontend. Ainda não há tarefa atribuída ao Claude. Os dois precisam partir da branch codex/banco-assinaturas-integridade, que contém as migrações e assinaturas; a main ainda não recebeu essas alterações.
+Proposta a confirmar com Calebe: Codex trabalha no banco, backend e testes; Claude trabalha no frontend. Ainda não há tarefa atribuída ao Claude. A main já contém banco, assinaturas, cotas e saldo, integrados pelo PR #1. Esta retomada está na branch codex/consolidacao-validacao, que incorpora a main e os registros posteriores.
 
 Antes de editar, combinar arquivos e objetivo. Evitar que duas ferramentas alterem `backend/models.py`, `backend/api.py` ou criem migrações simultaneamente. O repositório Git usado para publicação está em `github-publicacao`, com a aplicação na subpasta `PetLify`; a cópia executável local está em `PetLify-Copia`. Consulte `CONTINUIDADE.md` antes de retomar.
 
@@ -99,8 +99,8 @@ Mensagem sugerida para repassar ao Claude:
 1. Conferir este diagrama e explicar com suas palavras plano, assinatura e pagamento.
 2. Confirmar a divisão com o Claude e estabelecer uma versão compartilhada do projeto.
 3. Reforçar integridade entre lojas e adicionar testes que tentam criar relações inválidas.
-4. Cotas definidas e implementadas em 29/09/2026; revisar `cotas-dos-planos.md` e integrar a consulta de saldo no frontend.
+4. Cotas e consulta de saldo implementadas; revisar `cotas-dos-planos.md`.
 5. Integrar o histórico no frontend e testar o fluxo completo.
 6. Escolher o banco persistente e validar a migração nesse banco.
 
-Nesta retomada foi criado este roteiro, sem alteração do esquema ou das regras de assinatura.
+O roteiro didático acima acompanha a evolução já realizada. Para os próximos trabalhos, seguir os seis passos de ROTEIRO.md, aprovados em 30/09/2026.
