@@ -64,6 +64,7 @@ cd backend
 python -m venv venv
 .\venv\Scripts\python.exe -m pip install -r requirements.txt
 copy .env.example .env
+.\venv\Scripts\python.exe -m flask --app app db upgrade
 .\venv\Scripts\python.exe seed_dev.py
 .\venv\Scripts\python.exe -m flask run
 ```
@@ -183,12 +184,18 @@ NODE_VERSION=20.15.1
 
 ## Banco de dados
 
+O esquema agora é versionado por Flask-Migrate/Alembic. Execute `flask --app app db upgrade` antes do seed. Consulte [o guia do banco](docs/banco-de-dados.md) para entender relacionamentos, migrações e próximos passos.
+
+A segunda etapa adicionou planos, serviços, benefícios e assinaturas com validade de 30 dias. Consulte [as regras e a explicação de assinaturas](docs/assinaturas.md). A validação de limites semanais e quinzenais ainda está pendente.
+
+No Render, os dados de demonstração só são inseridos quando `SEED_DEMO=true`. Deixe essa opção desligada para preservar contas reais.
+
 Para a primeira fase, o projeto usa SQLite para facilitar a execução local e o deploy demo.
 
 Configuração local:
 
 ```text
-DATABASE_URL=sqlite:///instance/petlify.db
+DATABASE_URL=sqlite:///petlify.db
 ```
 
 Configuração usada no Render demo:

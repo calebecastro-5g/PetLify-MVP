@@ -7,8 +7,10 @@ export DATABASE_URL="${DATABASE_URL:-sqlite:////tmp/petlify.db}"
 mkdir -p /tmp
 
 echo "PetLify start"
-echo "DATABASE_URL=$DATABASE_URL"
 
 cd backend
-python seed_dev.py
+python -m flask --app app db upgrade
+if [ "${SEED_DEMO:-false}" = "true" ]; then
+  python seed_dev.py
+fi
 gunicorn app:app --bind 0.0.0.0:${PORT:-10000}

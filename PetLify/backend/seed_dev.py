@@ -11,6 +11,8 @@ from models import (
     Payment,
     PaymentMethod,
     Role,
+    Plan,
+    Subscription,
 )
 from catalog import find_catalog_item, catalog_amount
 
@@ -65,6 +67,18 @@ def get_or_create_pet(store, owner, name, species, breed, size, age, plan, icon)
     pet.size = size
     pet.age = age
     pet.plan = plan
+    db.session.flush()
+    if plan and not pet.subscription_at():
+        definition = Plan.query.filter_by(name=plan).one()
+        now = datetime.utcnow()
+        subscription = Subscription(
+            store_id=store.id, pet_id=pet.id, plan_id=definition.id,
+            starts_at=now, ends_at=now + timedelta(days=definition.duration_days),
+            status='active', source='demo',
+        )
+        db.session.add(subscription)
+        db.session.flush()
+        subscription.capture_limits()
     pet.photo_icon = icon
     return pet
 
@@ -165,7 +179,7 @@ def seed_store_maria(now):
 
 
 def seed():
-    db.create_all()
+    # As tabelas são criadas por `flask db upgrade`, antes do seed.
     now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
 
     default_store, *_ = seed_store_default(now)

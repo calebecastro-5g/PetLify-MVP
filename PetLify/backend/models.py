@@ -64,8 +64,9 @@ class User(db.Model):
     accepted_lgpd = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    pets = db.relationship('Pet', backref='owner', lazy=True)
-    appointments = db.relationship('Appointment', backref='client', lazy=True)
+    pets = db.relationship('Pet', backref='owner', lazy=True, foreign_keys='Pet.owner_id')
+    appointments = db.relationship('Appointment', backref='client', lazy=True, foreign_keys='Appointment.client_id')
+    __table_args__ = (db.UniqueConstraint('id', 'store_id', name='uq_users_id_store'),)
 
     @hybrid_property
     def password(self):
@@ -112,8 +113,25 @@ class Pet(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     vaccine_records = db.relationship('VaccineRecord', backref='pet', lazy=True)
+    subscriptions = db.relationship('Subscription', backref='pet', lazy=True, cascade='all, delete-orphan', foreign_keys='Subscription.pet_id')
+    __table_args__ = (
+        db.UniqueConstraint('id', 'store_id', name='uq_pets_id_store'),
+        db.UniqueConstraint('id', 'owner_id', 'store_id', name='uq_pets_id_owner_store'),
+        db.ForeignKeyConstraint(['owner_id', 'store_id'], ['users.id', 'users.store_id'], name='fk_pets_owner_store'),
+    )
+
+    def subscription_at(self, moment=None):
+        moment = moment or datetime.utcnow()
+        return Subscription.query.filter(
+            Subscription.pet_id == self.id,
+            Subscription.store_id == self.store_id,
+            Subscription.status == 'active',
+            Subscription.starts_at <= moment,
+            Subscription.ends_at > moment,
+        ).order_by(Subscription.starts_at.desc(), Subscription.id.desc()).first()
 
     def to_dict(self, include_owner=False):
+        subscription = self.subscription_at()
         data = {
             'id': self.id,
             'owner_id': self.owner_id,
@@ -122,7 +140,8 @@ class Pet(db.Model):
             'breed': self.breed,
             'size': self.size,
             'age': self.age,
-            'plan': self.plan,
+            'plan': subscription.plan.name if subscription else None,
+            'subscription': subscription.to_dict() if subscription else None,
             'photo_icon': self.photo_icon,
         }
         if include_owner:
@@ -175,9 +194,20 @@ class Appointment(db.Model):
     scheduled_at = db.Column(db.DateTime, nullable=False, index=True)
     status = db.Column(db.Enum(AppointmentStatus), default=AppointmentStatus.PENDING)
     notes = db.Column(db.Text, nullable=True)
+    subscription_id = db.Column(db.Integer, db.ForeignKey('subscriptions.id'), nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    pet = db.relationship('Pet', lazy=True)
+    pet = db.relationship('Pet', lazy=True, foreign_keys=[pet_id])
+    subscription = db.relationship('Subscription', lazy=True, foreign_keys=[subscription_id])
+    __table_args__ = (
+        db.UniqueConstraint('id', 'store_id', name='uq_appointments_id_store'),
+        db.UniqueConstraint('id', 'client_id', 'store_id', name='uq_appointments_id_client_store'),
+        db.ForeignKeyConstraint(['pet_id', 'client_id', 'store_id'], ['pets.id', 'pets.owner_id', 'pets.store_id'], name='fk_appointments_pet_owner'),
+        db.ForeignKeyConstraint(['subscription_id', 'pet_id', 'store_id'], ['subscriptions.id', 'subscriptions.pet_id', 'subscriptions.store_id'], name='fk_appointments_subscription_pet'),
+        db.ForeignKeyConstraint(['client_id', 'store_id'], ['users.id', 'users.store_id'], name='fk_appointments_client_store'),
+        db.ForeignKeyConstraint(['pet_id', 'store_id'], ['pets.id', 'pets.store_id'], name='fk_appointments_pet_store'),
+        db.ForeignKeyConstraint(['subscription_id', 'store_id'], ['subscriptions.id', 'subscriptions.store_id'], name='fk_appointments_subscription_store'),
+    )
 
     def to_dict(self):
         return {
@@ -200,7 +230,9 @@ class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     store_id = db.Column(db.Integer, db.ForeignKey('stores.id'), nullable=False, index=True)
     appointment_id = db.Column(db.Integer, db.ForeignKey('appointments.id'), nullable=True)
+    subscription_id = db.Column(db.Integer, db.ForeignKey('subscriptions.id'), nullable=True, index=True)
     client_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    pet_id = db.Column(db.Integer, nullable=True)
     method = db.Column(db.Enum(PaymentMethod), nullable=False)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     item_id = db.Column(db.String(64), nullable=True)
@@ -211,11 +243,23 @@ class Payment(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     client = db.relationship('User', foreign_keys=[client_id], lazy=True)
+    __table_args__ = (
+        db.ForeignKeyConstraint(['appointment_id', 'client_id', 'store_id'], ['appointments.id', 'appointments.client_id', 'appointments.store_id'], name='fk_payments_appointment_client'),
+        db.ForeignKeyConstraint(['pet_id', 'client_id', 'store_id'], ['pets.id', 'pets.owner_id', 'pets.store_id'], name='fk_payments_pet_owner'),
+        db.ForeignKeyConstraint(['subscription_id', 'pet_id', 'store_id'], ['subscriptions.id', 'subscriptions.pet_id', 'subscriptions.store_id'], name='fk_payments_subscription_pet'),
+        db.CheckConstraint('subscription_id IS NULL OR pet_id IS NOT NULL', name='ck_payments_subscription_pet_required'),
+        db.ForeignKeyConstraint(['client_id', 'store_id'], ['users.id', 'users.store_id'], name='fk_payments_client_store'),
+        db.ForeignKeyConstraint(['confirmed_by_employee_id', 'store_id'], ['users.id', 'users.store_id'], name='fk_payments_confirmer_store'),
+        db.ForeignKeyConstraint(['appointment_id', 'store_id'], ['appointments.id', 'appointments.store_id'], name='fk_payments_appointment_store'),
+        db.ForeignKeyConstraint(['subscription_id', 'store_id'], ['subscriptions.id', 'subscriptions.store_id'], name='fk_payments_subscription_store'),
+    )
 
     def to_dict(self):
         return {
             'id': self.id,
             'appointment_id': self.appointment_id,
+            'subscription_id': self.subscription_id,
+            'pet_id': self.pet_id,
             'client_id': self.client_id,
             'client_name': self.client.name if self.client else 'Cliente',
             'method': self.method.value,
@@ -226,6 +270,101 @@ class Payment(db.Model):
             'confirmed_by_employee_id': self.confirmed_by_employee_id,
             'confirmed_at': self.confirmed_at.isoformat() if self.confirmed_at else None,
             'created_at': self.created_at.isoformat(),
+        }
+
+
+class Plan(db.Model):
+    __tablename__ = 'plans'
+
+    id = db.Column(db.String(64), primary_key=True)
+    name = db.Column(db.String(64), nullable=False, unique=True)
+    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    duration_days = db.Column(db.Integer, nullable=False, default=30)
+    benefits = db.relationship('PlanBenefit', lazy=True, cascade='all, delete-orphan')
+    __table_args__ = (
+        db.CheckConstraint('amount >= 0', name='ck_plan_amount'),
+        db.CheckConstraint('duration_days > 0', name='ck_plan_duration'),
+    )
+
+    def covers(self, service):
+        return any(benefit.service.name == service for benefit in self.benefits)
+
+
+class Service(db.Model):
+    __tablename__ = 'services'
+
+    id = db.Column(db.String(64), primary_key=True)
+    name = db.Column(db.String(128), nullable=False, unique=True)
+    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    __table_args__ = (db.CheckConstraint('amount >= 0', name='ck_service_amount'),)
+
+
+class PlanBenefit(db.Model):
+    __tablename__ = 'plan_benefits'
+
+    plan_id = db.Column(db.String(64), db.ForeignKey('plans.id'), primary_key=True)
+    service_id = db.Column(db.String(64), db.ForeignKey('services.id'), primary_key=True)
+    max_uses = db.Column(db.Integer, nullable=False)
+    period_days = db.Column(db.Integer, nullable=False)
+    service = db.relationship('Service', lazy=True)
+    __table_args__ = (
+        db.CheckConstraint('max_uses > 0', name='ck_benefit_max_uses'),
+        db.CheckConstraint('period_days > 0', name='ck_benefit_period'),
+    )
+
+
+class SubscriptionLimit(db.Model):
+    __tablename__ = 'subscription_limits'
+
+    subscription_id = db.Column(db.Integer, db.ForeignKey('subscriptions.id'), primary_key=True)
+    service_id = db.Column(db.String(64), db.ForeignKey('services.id'), primary_key=True)
+    max_uses = db.Column(db.Integer, nullable=False)
+    period_days = db.Column(db.Integer, nullable=False)
+    service = db.relationship('Service', lazy=True)
+    __table_args__ = (
+        db.CheckConstraint('max_uses > 0', name='ck_subscription_limit_max'),
+        db.CheckConstraint('period_days > 0', name='ck_subscription_limit_period'),
+    )
+
+
+class Subscription(db.Model):
+    __tablename__ = 'subscriptions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    store_id = db.Column(db.Integer, db.ForeignKey('stores.id'), nullable=False, index=True)
+    pet_id = db.Column(db.Integer, db.ForeignKey('pets.id'), nullable=False, index=True)
+    plan_id = db.Column(db.String(64), db.ForeignKey('plans.id'), nullable=False)
+    starts_at = db.Column(db.DateTime, nullable=False)
+    ends_at = db.Column(db.DateTime, nullable=False)
+    status = db.Column(db.String(16), nullable=False, default='active')
+    source = db.Column(db.String(16), nullable=False, default='purchase')
+    plan = db.relationship('Plan', lazy=True)
+    limits = db.relationship('SubscriptionLimit', lazy=True, cascade='all, delete-orphan')
+
+    def capture_limits(self):
+        self.limits = [SubscriptionLimit(service_id=benefit.service_id,
+                      max_uses=benefit.max_uses, period_days=benefit.period_days)
+                       for benefit in self.plan.benefits]
+
+    def covers(self, service):
+        return any(limit.service.name == service for limit in self.limits)
+    __table_args__ = (
+        db.UniqueConstraint('id', 'store_id', name='uq_subscriptions_id_store'),
+        db.UniqueConstraint('id', 'pet_id', 'store_id', name='uq_subscriptions_id_pet_store'),
+        db.ForeignKeyConstraint(['pet_id', 'store_id'], ['pets.id', 'pets.store_id'], name='fk_subscriptions_pet_store'),
+        db.CheckConstraint('ends_at > starts_at', name='ck_subscription_period'),
+        db.CheckConstraint("status IN ('active', 'replaced', 'canceled')", name='ck_subscription_status'),
+        db.CheckConstraint("source IN ('purchase', 'legacy', 'demo')", name='ck_subscription_source'),
+    )
+
+    def to_dict(self):
+        now = datetime.utcnow()
+        return {
+            'id': self.id, 'pet_id': self.pet_id, 'plan_id': self.plan_id,
+            'plan_name': self.plan.name,
+            'starts_at': self.starts_at.isoformat(), 'ends_at': self.ends_at.isoformat(),
+            'status': 'expired' if self.status == 'active' and now >= self.ends_at else self.status,
+            'source': self.source,
         }
 
 

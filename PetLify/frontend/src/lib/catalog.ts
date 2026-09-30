@@ -15,8 +15,8 @@ export const platformPlans: CatalogItem[] = [
     displayName: 'Plano Básico',
     type: 'Plano mensal',
     amount: 99,
-    frequency: 'Banho/tosa 1x a cada 15 dias',
-    description: 'Banho/tosa 1x a cada 15 dias — R$ 99,00/mês',
+    frequency: '1 banho e 1 tosa por bloco de 15 dias desde a contratação',
+    description: '1 banho e 1 tosa por bloco de 15 dias — R$ 99,00 por ciclo de 30 dias',
   },
   {
     id: 'plan-premium',
@@ -24,8 +24,8 @@ export const platformPlans: CatalogItem[] = [
     displayName: 'Plano Premium',
     type: 'Plano mensal',
     amount: 189,
-    frequency: 'Banho/tosa 1x por semana',
-    description: 'Banho/tosa 1x por semana — R$ 189,00/mês',
+    frequency: '1 banho e 1 tosa por bloco de 7 dias desde a contratação, inclusive no bloco final parcial',
+    description: '1 banho e 1 tosa por bloco de 7 dias — R$ 189,00 por ciclo de 30 dias',
   },
   {
     id: 'plan-premium-plus',
@@ -33,8 +33,8 @@ export const platformPlans: CatalogItem[] = [
     displayName: 'Plano Premium Plus',
     type: 'Plano mensal',
     amount: 349,
-    frequency: 'Banho/tosa 2x por semana + hidratação + corte de unha + limpeza de ouvido',
-    description: 'Banho/tosa 2x por semana + hidratação + corte de unha + limpeza de ouvido — R$ 349,00/mês',
+    frequency: '2 banhos e 2 tosas por bloco de 7 dias desde a contratação, inclusive no bloco final parcial; hidratação, corte de unha e limpeza de ouvido: 1 de cada por ciclo',
+    description: '2 banhos e 2 tosas por bloco de 7 dias + 1 de cada extra por ciclo — R$ 349,00 por ciclo de 30 dias',
   },
 ];
 
