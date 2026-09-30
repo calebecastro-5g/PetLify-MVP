@@ -63,8 +63,10 @@ Estado mais recente — etapa 5: revisão `b72e8d194c05` aplicada localmente em 
 
 O envio autorizado foi concluído em 29/09/2026 na branch `codex/banco-assinaturas-integridade`, preservando a pasta `PetLify/` do repositório. A cópia Git está em `../github-publicacao`. A versão remota de origem correspondia ao ZIP recebido (ignorando quebras de linha); arquivos ocultos de configuração ausentes foram incluídos. O push foi confirmado pelo Git e a comparação ficou visível no GitHub.
 
-Pull request ainda não criado: o conector retornou HTTP 403 (Resource not accessible by integration) e o navegador disponível estava sem login. Abrir a comparação abaixo, entrar no GitHub e criar o PR para revisão do grupo:
-https://github.com/calebecastro-5g/PetLify-MVP/compare/main...codex/banco-assinaturas-integridade?expand=1
+Publicação confirmada em 30/09/2026: o commit `5f8ce01` da tela de saldo foi enviado após o bloqueio anterior por limite do aprovador automático. O pull request #1 existe e está aberto para integrar a branch na main:
+https://github.com/calebecastro-5g/PetLify-MVP/pull/1
+
+Esta retomada atualiza somente o registro de publicação. Build TypeScript/Vite e verificação visual da etapa 7 foram feitos anteriormente; os 22 testes do backend pertencem à validação da etapa 6. Não houve nova alteração de código nem merge nesta retomada.
 
 Registro para ata — 29/09/2026: publicadas as cinco migrações, catálogo/assinaturas, proteções de integridade e documentação. Validação anterior: 14 testes em SQLite. Integração na main e implantação permanecem pendentes.
 
