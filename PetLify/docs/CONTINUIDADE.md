@@ -13,7 +13,7 @@ O usuário pretende alternar entre Codex e Claude, provavelmente na mesma pasta,
 - Pasta de trabalho do aplicativo: `C:/Users/Calebe/OneDrive/Documentos/ChatGPT/Petlify/PetLify-Copia`.
 - Origem da cópia: arquivo ZIP fornecido pelo usuário.
 - Repositório informado: https://github.com/calebecastro-5g/PetLify-MVP
-- As mudanças descritas abaixo ainda não foram enviadas ao GitHub nesta conversa.
+- Publicado no GitHub em 29/09/2026: branch `codex/banco-assinaturas-integridade`, commit de implementação `9ea1d13`. A main ainda não recebeu essas alterações.
 - Na última consulta, o Git da pasta superior mostrava `PetLify-Copia/` como não rastreado. Confira o estado atual antes de preparar commits; não suponha que esta cópia contém o histórico do repositório remoto.
 
 ## Implementado
@@ -39,7 +39,7 @@ O usuário pretende alternar entre Codex e Claude, provavelmente na mesma pasta,
 
 ## Verificação mais recente
 
-Em 24/09/2026, os sete testes passaram novamente em SQLite temporário. Isso não certifica o frontend, Render nem outro banco relacional.
+Em 24/09/2026, os 14 testes passaram em SQLite temporário, inclusive sobre a cópia Git preparada para publicação. Isso não certifica o frontend, Render nem outro banco relacional. Em 29/09/2026 foi realizado o envio, sem mudanças de código.
 
 Na pasta `backend`, com o ambiente existente na raiz do aplicativo:
 
@@ -53,7 +53,12 @@ Não execute o seed sobre dados que deseja preservar: ele redefine contas de dem
 
 Estado mais recente — etapa 5: revisão `b72e8d194c05` aplicada localmente em 24/09/2026. Pagamentos validam cliente do agendamento ou tutor do pet da assinatura. Campo novo `payments.pet_id`; checkout e desvinculação ao excluir pet atualizados. Corrigido autoflush de pagamento avulso com valor ainda vazio. Quatorze testes passaram. Backup anterior: `backend/instance/petlify-before-b72e8d194c05.db`. Ver `docs/integridade-pagamentos.md`.
 
-O usuário autorizou o envio ao GitHub depois desta etapa. A publicação está sendo preparada em `codex/banco-assinaturas-integridade`, a partir da main atual, preservando a pasta `PetLify/` do repositório. A cópia Git de preparação está em `../github-publicacao`. A versão remota de origem corresponde ao ZIP recebido (ignorando quebras de linha); arquivos ocultos de configuração ausentes serão incluídos. Consultar o GitHub para confirmar a publicação final.
+O envio autorizado foi concluído em 29/09/2026 na branch `codex/banco-assinaturas-integridade`, preservando a pasta `PetLify/` do repositório. A cópia Git está em `../github-publicacao`. A versão remota de origem correspondia ao ZIP recebido (ignorando quebras de linha); arquivos ocultos de configuração ausentes foram incluídos. O push foi confirmado pelo Git e a comparação ficou visível no GitHub.
+
+Pull request ainda não criado: o conector retornou HTTP 403 (Resource not accessible by integration) e o navegador disponível estava sem login. Abrir a comparação abaixo, entrar no GitHub e criar o PR para revisão do grupo:
+https://github.com/calebecastro-5g/PetLify-MVP/compare/main...codex/banco-assinaturas-integridade?expand=1
+
+Registro para ata — 29/09/2026: publicadas as cinco migrações, catálogo/assinaturas, proteções de integridade e documentação. Validação anterior: 14 testes em SQLite. Integração na main e implantação permanecem pendentes.
 
 Próximo trabalho sugerido: alinhar as cotas de uso dos planos com o grupo e implementar os limites. Pagamentos reais, concorrência e deploy persistente continuam pendentes. Não há tarefa atribuída ao Claude. Os guias por etapa complementam o documento Word anterior.
 
