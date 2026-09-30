@@ -71,11 +71,14 @@ def get_or_create_pet(store, owner, name, species, breed, size, age, plan, icon)
     if plan and not pet.subscription_at():
         definition = Plan.query.filter_by(name=plan).one()
         now = datetime.utcnow()
-        db.session.add(Subscription(
+        subscription = Subscription(
             store_id=store.id, pet_id=pet.id, plan_id=definition.id,
             starts_at=now, ends_at=now + timedelta(days=definition.duration_days),
             status='active', source='demo',
-        ))
+        )
+        db.session.add(subscription)
+        db.session.flush()
+        subscription.capture_limits()
     pet.photo_icon = icon
     return pet
 

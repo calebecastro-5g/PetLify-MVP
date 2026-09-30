@@ -36,7 +36,7 @@ erDiagram
 - O pagamento guarda o valor praticado na compra, sem aceitar o valor enviado pelo cliente. Preço de plano/serviço é lido do banco.
 - Uma senha inválida para dinheiro desfaz as alterações pendentes. Pagamento e assinatura são salvos juntos em uma transação: ambos são confirmados ou nenhum deles.
 
-PIX e cartão continuam simulados: esta etapa não confirma transações em um provedor financeiro. A interface e os metadados do catálogo continuam usando as definições fixas existentes; alterações de catálogo deverão sincronizar essas definições em uma evolução futura.
+PIX e cartão continuam simulados: esta etapa não confirma transações em um provedor financeiro. A interface e os metadados do catálogo continuam usando definições fixas; alterações de catálogo deverão sincronizar essas definições em uma evolução futura. Na etapa 6, a cobertura passou a usar os serviços e limites copiados na assinatura, preservando a contratação; veja `cotas-dos-planos.md`.
 
 ## Migração e legado
 
@@ -65,6 +65,6 @@ Os testes criam bancos temporários separados, aplicam as migrações e não mod
 
 ## Pendências de regra de negócio
 
-Os limites semanais e quinzenais anunciados no catálogo ainda não são aplicados. Precisamos decidir se a contagem usa semanas de calendário ou janelas a partir da contratação; se Banho e Tosa consomem uma cota compartilhada; e como cancelamentos devolvem cota. Até isso ser definido, a implementação valida serviço e validade, mas não quantidade de usos.
+Atualização de 29/09/2026: as cotas separadas de Banho e Tosa foram definidas e implementadas em blocos desde a contratação. Cada extra do Plus tem um uso por ciclo; cancelamentos liberam uso e faltas consomem. A migração `c83f9e205d16` guarda limites contratados e a API valida a quantidade. Veja `cotas-dos-planos.md` para a regra completa e a transição dos dados existentes.
 
-Também continuam pendentes: proteção de compras repetidas e concorrentes; integridade entre lojas no próprio banco; fuso horário dos agendamentos; pagamentos reais; regras de renovação e reembolso; banco externo persistente. A validação realizada foi em SQLite local.
+Continuam pendentes: proteção de compras repetidas e concorrentes; fuso horário dos agendamentos; pagamentos reais; regras de renovação e reembolso; banco externo persistente. A integridade entre lojas foi implementada nas etapas 3 a 5. A reserva concorrente da última cota pela API foi tratada na etapa 6. A validação realizada foi em SQLite local.

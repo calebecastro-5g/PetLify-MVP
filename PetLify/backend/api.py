@@ -22,6 +22,7 @@ from extensions import db
 from utils import role_required, tenant_required, audit_log
 from auth import normalize_cpf, password_is_valid, slugify
 from catalog import catalog_payload, normalize_plan_name, find_catalog_item, catalog_amount
+from quotas import lock_subscription, quota_error, usage_for
 
 api_bp = Blueprint('api', __name__)
 
@@ -522,8 +523,18 @@ def create_appointment():
     subscription = None
     if data.get('billing_type') == 'Plano mensal':
         subscription = pet.subscription_at(scheduled_at)
-        if not subscription or not subscription.plan.covers(service):
+        if subscription:
+            lock_subscription(subscription)
+        if not subscription or subscription.status != 'active' or not subscription.covers(service):
+            db.session.rollback()
             return jsonify({'error': 'O plano não cobre este serviço na data escolhida.'}), 400
+        error = quota_error(subscription, service, scheduled_at)
+        if error:
+            db.session.rollback()
+            return jsonify({'error': error, 'code': 'subscription_quota_exceeded'}), 409
+        if not slot_is_available(user.store_id, pet, scheduled_at):
+            db.session.rollback()
+            return jsonify({'error': 'Horário indisponível para este Pet Shop.'}), 409
 
     appointment = Appointment(
         store_id=user.store_id,
@@ -554,6 +565,21 @@ def update_appointment(appointment_id):
     if user.role == Role.CLIENT and data.get('status') and data['status'] not in ('Cancelado',):
         return jsonify({'error': 'Cliente pode apenas cancelar agendamento'}), 403
 
+    if appointment.subscription:
+        lock_subscription(appointment.subscription)
+        db.session.refresh(appointment)
+        if appointment.status in (AppointmentStatus.COMPLETED, AppointmentStatus.NO_SHOW) and any(
+            field in data for field in ('service', 'scheduled_at', 'billing_type')
+        ):
+            db.session.rollback()
+            return jsonify({'error': 'Atendimento concluído ou com falta preserva o consumo do plano; não é possível remarcar ou alterar a cobrança.'}), 409
+    try:
+        new_status = AppointmentStatus(data['status']) if data.get('status') else appointment.status
+    except ValueError:
+        db.session.rollback()
+        return jsonify({'error': 'Status inválido'}), 400
+    reactivating = appointment.status == AppointmentStatus.CANCELED and new_status != AppointmentStatus.CANCELED
+
     if data.get('status') == 'Cancelado' and user.role == Role.CLIENT:
         has_payment = Payment.query.filter_by(appointment_id=appointment.id).first() is not None
         if appointment.scheduled_at - datetime.utcnow() < timedelta(hours=CANCEL_DEADLINE_HOURS) and not has_payment:
@@ -574,19 +600,26 @@ def update_appointment(appointment_id):
     plan_mode = data.get('billing_type') == 'Plano mensal' or (
         'billing_type' not in data and appointment.subscription_id is not None
     )
-    coverage_changed = any(field in data for field in ('service', 'scheduled_at', 'billing_type'))
+    coverage_changed = any(field in data for field in ('service', 'scheduled_at', 'billing_type')) or reactivating
     subscription = (
         appointment.pet.subscription_at(new_scheduled_at) if coverage_changed
         else appointment.subscription
     ) if plan_mode else None
-    if plan_mode and coverage_changed and (not subscription or not subscription.plan.covers(new_service)):
+    if subscription and coverage_changed:
+        lock_subscription(subscription)
+    if plan_mode and coverage_changed and (not subscription or subscription.status != 'active' or not subscription.covers(new_service)):
+        db.session.rollback()
         return jsonify({'error': 'O plano não cobre este serviço na data escolhida.'}), 400
+    if subscription and coverage_changed and new_status != AppointmentStatus.CANCELED:
+        error = quota_error(subscription, new_service, new_scheduled_at, appointment.id)
+        if error:
+            db.session.rollback()
+            return jsonify({'error': error, 'code': 'subscription_quota_exceeded'}), 409
+    if reactivating and not slot_is_available(user.store_id, appointment.pet, new_scheduled_at, appointment.id):
+        db.session.rollback()
+        return jsonify({'error': 'Horário indisponível para este Pet Shop.'}), 409
 
-    if data.get('status'):
-        try:
-            appointment.status = AppointmentStatus(data['status'])
-        except ValueError:
-            return jsonify({'error': 'Status inválido'}), 400
+    appointment.status = new_status
 
     old_service = appointment.service
     appointment.scheduled_at = new_scheduled_at
@@ -622,6 +655,12 @@ def delete_appointment(appointment_id):
     appointment = Appointment.query.filter_by(id=appointment_id, store_id=user.store_id).first_or_404()
     if user.role == Role.CLIENT and appointment.client_id != user.id:
         return jsonify({'error': 'Permissão negada'}), 403
+    if appointment.subscription:
+        lock_subscription(appointment.subscription)
+        db.session.refresh(appointment)
+        if appointment.status != AppointmentStatus.CANCELED:
+            db.session.rollback()
+            return jsonify({'error': 'Cancele o agendamento pelo plano antes de excluir, para liberar a cota explicitamente.'}), 409
     if user.role == Role.CLIENT and appointment.scheduled_at - datetime.utcnow() < timedelta(hours=CANCEL_DEADLINE_HOURS):
         return jsonify({'error': 'Exclusão com menos de 6 horas não é permitida. O cancelamento tardio exige pagamento.'}), 400
 
@@ -729,6 +768,7 @@ def create_payment():
         )
         db.session.add(subscription)
         db.session.flush()
+        subscription.capture_limits()
         payment.subscription_id = subscription.id
         payment.pet_id = pet.id
 
@@ -760,6 +800,30 @@ def list_subscriptions():
     if user.role == Role.CLIENT:
         query = query.filter(Pet.owner_id == user.id)
     return jsonify([item.to_dict() for item in query.order_by(Subscription.id.desc()).all()])
+
+
+@api_bp.route('/subscriptions/<int:subscription_id>/usage', methods=['GET'])
+@jwt_required()
+@tenant_required
+def subscription_usage(subscription_id):
+    user = current_user()
+    query = Subscription.query.join(Pet, Subscription.pet_id == Pet.id).filter(
+        Subscription.id == subscription_id, Subscription.store_id == user.store_id,
+        Pet.store_id == user.store_id,
+    )
+    if user.role == Role.CLIENT:
+        query = query.filter(Pet.owner_id == user.id)
+    subscription = query.first_or_404()
+    try:
+        moment = parse_datetime(request.args['at'], 'Data') if 'at' in request.args else datetime.utcnow()
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    if not subscription.starts_at <= moment < subscription.ends_at:
+        return jsonify({'error': 'Data fora da vigência da assinatura.'}), 400
+    return jsonify({'subscription_id': subscription.id,
+                    'status': subscription.status,
+                    'services': [usage_for(subscription, limit.service.name, moment)
+                                 for limit in subscription.limits]})
 
 
 @api_bp.route('/employees', methods=['GET'])

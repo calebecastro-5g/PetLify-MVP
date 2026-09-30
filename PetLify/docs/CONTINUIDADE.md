@@ -31,7 +31,7 @@ O usuário pretende alternar entre Codex e Claude, provavelmente na mesma pasta,
 
 - Ciclos de 30 dias, sem renovação automática; uma nova compra substitui a assinatura anterior.
 - PIX e cartão permanecem simulados.
-- Limites semanais e quinzenais ainda não são aplicados. Não trate isso como implementado.
+- Cotas por serviço implementadas na etapa 6: blocos desde a contratação, cancelamento libera uso e falta consome. Veja `docs/cotas-dos-planos.md`.
 - Migração concede 30 dias de transição aos planos legados reconhecidos, com `source=legacy`, sem criar pagamentos fictícios. Revisar a política antes de usar dados reais.
 - O texto `pets.plan` permanece como legado; a API calcula o plano pela assinatura vigente.
 - Catálogo da interface e metadados do backend ainda contêm listas fixas.
@@ -39,7 +39,7 @@ O usuário pretende alternar entre Codex e Claude, provavelmente na mesma pasta,
 
 ## Verificação mais recente
 
-Em 24/09/2026, os 14 testes passaram em SQLite temporário, inclusive sobre a cópia Git preparada para publicação. Isso não certifica o frontend, Render nem outro banco relacional. Em 29/09/2026 foi realizado o envio, sem mudanças de código.
+Em 29/09/2026, os 22 testes passaram em SQLite temporário sobre a cópia Git, incluindo concorrência pela última cota. A migração local foi aplicada após backup: os dados das 11 tabelas anteriores foram comparados e preservados; foram criadas 11 configurações em subscription_limits. foreign_key_check não encontrou violações. O frontend recebeu apenas revisão textual do catálogo; build não executado (dependências locais ausentes). Render e outros bancos não foram testados.
 
 Na pasta `backend`, com o ambiente existente na raiz do aplicativo:
 
@@ -51,6 +51,10 @@ Não execute o seed sobre dados que deseja preservar: ele redefine contas de dem
 
 ## Próximo passo proposto
 
+Etapa 6 concluída em 29/09/2026: Calebe definiu cotas separadas por serviço, blocos desde a contratação, extras do Plus 1 vez por ciclo, cancelamento liberando uso e falta consumindo. Migração `c83f9e205d16` aplicada localmente. Backup: `backend/instance/petlify-before-c83f9e205d16-20260929-232533.db`. Criados limites em plan_benefits e cópias contratadas em subscription_limits; módulo quotas.py; validação em criação/alteração/reativação; consulta GET /api/subscriptions/<id>/usage; proteção contra exclusão ou alteração de consumo concluído; textos dos catálogos atualizados. Código sincronizado com PetLify-Copia após comparação para não sobrescrever trabalho divergente.
+
+Guia e registro para ata: `docs/cotas-dos-planos.md`. Próximo passo: mostrar saldo por serviço/período na interface. As alterações desta etapa seguem para a mesma branch `codex/banco-assinaturas-integridade`; conferir o histórico Git para o commit publicado.
+
 Estado mais recente — etapa 5: revisão `b72e8d194c05` aplicada localmente em 24/09/2026. Pagamentos validam cliente do agendamento ou tutor do pet da assinatura. Campo novo `payments.pet_id`; checkout e desvinculação ao excluir pet atualizados. Corrigido autoflush de pagamento avulso com valor ainda vazio. Quatorze testes passaram. Backup anterior: `backend/instance/petlify-before-b72e8d194c05.db`. Ver `docs/integridade-pagamentos.md`.
 
 O envio autorizado foi concluído em 29/09/2026 na branch `codex/banco-assinaturas-integridade`, preservando a pasta `PetLify/` do repositório. A cópia Git está em `../github-publicacao`. A versão remota de origem correspondia ao ZIP recebido (ignorando quebras de linha); arquivos ocultos de configuração ausentes foram incluídos. O push foi confirmado pelo Git e a comparação ficou visível no GitHub.
@@ -60,7 +64,7 @@ https://github.com/calebecastro-5g/PetLify-MVP/compare/main...codex/banco-assina
 
 Registro para ata — 29/09/2026: publicadas as cinco migrações, catálogo/assinaturas, proteções de integridade e documentação. Validação anterior: 14 testes em SQLite. Integração na main e implantação permanecem pendentes.
 
-Próximo trabalho sugerido: alinhar as cotas de uso dos planos com o grupo e implementar os limites. Pagamentos reais, concorrência e deploy persistente continuam pendentes. Não há tarefa atribuída ao Claude. Os guias por etapa complementam o documento Word anterior.
+As cotas propostas na etapa 5 foram definidas e implementadas na etapa 6 acima. Pagamentos reais, concorrência de compras e deploy persistente continuam pendentes. Não há tarefa atribuída ao Claude. Os guias por etapa complementam o documento Word anterior.
 
 Estado mais recente — etapa 4 concluída: revisão `a4b62c819f03` aplicada localmente em 24/09/2026. Agendamentos agora exigem tutor correto e assinatura do próprio pet via chaves compostas. Doze testes passaram. Conteúdo completo das 11 tabelas comparado ao backup `backend/instance/petlify-before-a4b62c819f03.db`, sem alteração de dados. Ver `docs/integridade-tutor-assinatura.md`. Troca de tutor com agendamentos existentes é bloqueada e precisará de regra própria se virar funcionalidade.
 

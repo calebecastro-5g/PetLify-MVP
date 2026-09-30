@@ -77,18 +77,18 @@ ORDER BY s.id DESC;
 
 ## 5. Identificar o que ainda precisa evoluir
 
-- As chaves estrangeiras simples não garantem que o tutor, pet, assinatura e agendamento pertençam à mesma loja. É necessário fortalecer essa integridade e verificar a aplicação das chaves no SQLite.
+- A integridade entre lojas e os vínculos exatos de tutor/pet/assinatura foram reforçados nas etapas 3 a 5 com chaves compostas e testes em SQLite.
 - `birth_date` ainda é texto; converter para `Date` exige validar a entrada e tratar dados antigos.
 - `appointments.service` é texto, sem chave estrangeira para `services`.
 - `pets.plan` ainda existe como legado; a API calcula o plano vigente pela assinatura.
 - Catálogo do frontend e metadados do backend ainda usam listas fixas. A existência de tabelas não eliminou toda duplicação.
-- Limites semanais e quinzenais, concorrência, pagamentos reais, exclusão de históricos e fuso horário continuam pendentes.
+- Limites por blocos de 7/15 dias e extras por ciclo foram implementados na etapa 6, com reserva concorrente testada. Concorrência de compras, pagamentos reais, exclusão de históricos e fuso horário continuam pendentes.
 
 ## 6. Dividir o trabalho simultâneo
 
-Proposta a confirmar com Calebe: Codex trabalha no banco, backend e testes; Claude trabalha no frontend. Os dois precisam partir da mesma versão atual, que contém as migrações e assinaturas. A cópia do GitHub pode não conter estas mudanças locais.
+Proposta a confirmar com Calebe: Codex trabalha no banco, backend e testes; Claude trabalha no frontend. Ainda não há tarefa atribuída ao Claude. Os dois precisam partir da branch codex/banco-assinaturas-integridade, que contém as migrações e assinaturas; a main ainda não recebeu essas alterações.
 
-Antes de editar, combinar arquivos e objetivo. Evitar que duas ferramentas alterem `backend/models.py`, `backend/api.py` ou criem migrações simultaneamente. O Git atual mostra `PetLify-Copia/` como não rastreado: ainda falta estabelecer uma versão compartilhada em commits.
+Antes de editar, combinar arquivos e objetivo. Evitar que duas ferramentas alterem `backend/models.py`, `backend/api.py` ou criem migrações simultaneamente. O repositório Git usado para publicação está em `github-publicacao`, com a aplicação na subpasta `PetLify`; a cópia executável local está em `PetLify-Copia`. Consulte `CONTINUIDADE.md` antes de retomar.
 
 Mensagem sugerida para repassar ao Claude:
 
@@ -99,7 +99,7 @@ Mensagem sugerida para repassar ao Claude:
 1. Conferir este diagrama e explicar com suas palavras plano, assinatura e pagamento.
 2. Confirmar a divisão com o Claude e estabelecer uma versão compartilhada do projeto.
 3. Reforçar integridade entre lojas e adicionar testes que tentam criar relações inválidas.
-4. Definir as cotas com o grupo antes de implementar limites.
+4. Cotas definidas e implementadas em 29/09/2026; revisar `cotas-dos-planos.md` e integrar a consulta de saldo no frontend.
 5. Integrar o histórico no frontend e testar o fluxo completo.
 6. Escolher o banco persistente e validar a migração nesse banco.
 

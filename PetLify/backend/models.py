@@ -304,7 +304,27 @@ class PlanBenefit(db.Model):
 
     plan_id = db.Column(db.String(64), db.ForeignKey('plans.id'), primary_key=True)
     service_id = db.Column(db.String(64), db.ForeignKey('services.id'), primary_key=True)
+    max_uses = db.Column(db.Integer, nullable=False)
+    period_days = db.Column(db.Integer, nullable=False)
     service = db.relationship('Service', lazy=True)
+    __table_args__ = (
+        db.CheckConstraint('max_uses > 0', name='ck_benefit_max_uses'),
+        db.CheckConstraint('period_days > 0', name='ck_benefit_period'),
+    )
+
+
+class SubscriptionLimit(db.Model):
+    __tablename__ = 'subscription_limits'
+
+    subscription_id = db.Column(db.Integer, db.ForeignKey('subscriptions.id'), primary_key=True)
+    service_id = db.Column(db.String(64), db.ForeignKey('services.id'), primary_key=True)
+    max_uses = db.Column(db.Integer, nullable=False)
+    period_days = db.Column(db.Integer, nullable=False)
+    service = db.relationship('Service', lazy=True)
+    __table_args__ = (
+        db.CheckConstraint('max_uses > 0', name='ck_subscription_limit_max'),
+        db.CheckConstraint('period_days > 0', name='ck_subscription_limit_period'),
+    )
 
 
 class Subscription(db.Model):
@@ -319,6 +339,15 @@ class Subscription(db.Model):
     status = db.Column(db.String(16), nullable=False, default='active')
     source = db.Column(db.String(16), nullable=False, default='purchase')
     plan = db.relationship('Plan', lazy=True)
+    limits = db.relationship('SubscriptionLimit', lazy=True, cascade='all, delete-orphan')
+
+    def capture_limits(self):
+        self.limits = [SubscriptionLimit(service_id=benefit.service_id,
+                      max_uses=benefit.max_uses, period_days=benefit.period_days)
+                       for benefit in self.plan.benefits]
+
+    def covers(self, service):
+        return any(limit.service.name == service for limit in self.limits)
     __table_args__ = (
         db.UniqueConstraint('id', 'store_id', name='uq_subscriptions_id_store'),
         db.UniqueConstraint('id', 'pet_id', 'store_id', name='uq_subscriptions_id_pet_store'),
