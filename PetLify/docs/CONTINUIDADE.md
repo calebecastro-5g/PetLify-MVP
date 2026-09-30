@@ -31,6 +31,8 @@ Retomada atual: passos 1 e 2 concluídos em 30/09/2026. Próximo: passo 3, datas
 - PR #1 integrado à main: https://github.com/calebecastro-5g/PetLify-MVP/pull/1
 - Commit da tela de saldo: 5f8ce01; integração na main: 84911c6.
 - Branch desta retomada: codex/consolidacao-validacao. Incorpora origin/main e os registros posteriores sem reescrever histórico.
+- Passos 1 e 2 publicados no PR #2, aberto para revisão: https://github.com/calebecastro-5g/PetLify-MVP/pull/2. Ainda não integrado à main no encerramento desta etapa.
+- Commits das correções e do roteiro/validação: 829fef6 e 0a9930d.
 
 ## Implementado
 

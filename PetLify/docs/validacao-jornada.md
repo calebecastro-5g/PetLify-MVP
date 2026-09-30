@@ -2,6 +2,8 @@
 
 Registro para o grupo e para uma ata. Corresponde aos passos 1 e 2 de [ROTEIRO.md](ROTEIRO.md).
 
+Publicado na branch `codex/consolidacao-validacao`, com os commits 829fef6 (correções) e 0a9930d (registro), no [PR #2](https://github.com/calebecastro-5g/PetLify-MVP/pull/2), aberto para revisão. A criação foi concluída pelo navegador; a integração GitHub recusou essa operação por falta de permissão. Nenhuma integração à main foi feita nesta etapa.
+
 ## Objetivo e ambiente
 
 Consolidar os guias com a versão integrada pelo PR #1 e conferir a jornada do cliente pela interface, do cadastro ao uso do plano.
