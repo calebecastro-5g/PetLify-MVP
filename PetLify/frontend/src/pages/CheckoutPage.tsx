@@ -144,7 +144,7 @@ function CheckoutPage() {
                   <ProductCard key={product.id} active={product.id === selectedProductId} onClick={() => setSelectedProductId(product.id)} type="button">
                     <strong>{product.displayName}</strong>
                     <span>{product.frequency}</span>
-                    <small>{formatCurrency(product.amount)}/mês</small>
+                    <small>{formatCurrency(product.amount)} por ciclo de 30 dias</small>
                   </ProductCard>
                 ))}
               </ProductGrid>

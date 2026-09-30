@@ -12,11 +12,9 @@ FRONTEND_DIST = (BASE_DIR / '..' / 'frontend' / 'dist').resolve()
 
 
 def create_app():
-    app = Flask(
-        __name__,
-        static_folder=str(FRONTEND_DIST) if FRONTEND_DIST.exists() else None,
-        static_url_path='',
-    )
+    # serve_frontend handles both Vite assets and React routes. An automatic
+    # static route at /<path:path> would shadow it and break direct links.
+    app = Flask(__name__, static_folder=None)
     app.config.from_object(ProductionConfig if os.environ.get('FLASK_ENV') == 'production' else DevelopmentConfig)
     init_extensions(app)
 
@@ -31,9 +29,12 @@ def create_app():
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_frontend(path):
-        if path.startswith('api/'):
+        if path == 'api' or path.startswith('api/'):
             return jsonify({'error': 'Endpoint não encontrado'}), 404
         if FRONTEND_DIST.exists():
+            if path.startswith('assets/'):
+                # Missing build assets must stay 404 instead of receiving HTML.
+                return send_from_directory(FRONTEND_DIST, path)
             target = FRONTEND_DIST / path
             if path and target.exists() and target.is_file():
                 return send_from_directory(FRONTEND_DIST, path)
