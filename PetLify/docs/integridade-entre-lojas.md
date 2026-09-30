@@ -61,9 +61,9 @@ Comando, dentro de `backend`:
 
 ## 7. Limites e próximos passos
 
-As restrições garantem mesma loja, mas não que o cliente de um agendamento seja o tutor daquele pet, nem que uma assinatura apontada pertença exatamente ao pet agendado dentro da mesma loja. Essas são regras adicionais. Os testes feitos usam SQLite; outro banco precisa ser validado antes de deploy.
+Este guia registra a etapa 3. Nas etapas 4 e 5, os vínculos exatos de tutor/pet/assinatura e de pagamentos também foram implementados. Os testes usam SQLite; outro banco precisa de validação antes de deploy.
 
-Limites de uso dos planos, pagamentos reais, concorrência, catálogo duplicado, fuso e retenção de histórico continuam pendentes. A aplicação local agora está na revisão `73032ec89a26`; as alterações ainda não foram enviadas ao GitHub.
+Cotas e concorrência na última cota foram implementadas na etapa 6; saldo do cliente na etapa 7. A revisão atual é c83f9e205d16 e o PR #1 foi integrado à main. Pagamentos reais, concorrência de compras/lotação geral, catálogo duplicado, fuso e retenção continuam pendentes; seguir ROTEIRO.md.
 
 ## Texto para registro do grupo
 

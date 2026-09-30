@@ -1,6 +1,6 @@
-# Banco de dados do PetLify — primeira etapa
+# Banco de dados do PetLify
 
-Este guia registra a primeira etapa. A evolução de planos e assinaturas está implementada e descrita em [assinaturas.md](assinaturas.md).
+Atualizado em 30/09/2026. O esquema atual inclui seis migrações, assinaturas e cotas. As regras estão em [assinaturas.md](assinaturas.md) e [cotas-dos-planos.md](cotas-dos-planos.md). A sequência aprovada está em [ROTEIRO.md](ROTEIRO.md).
 
 ## O que já funciona
 
@@ -8,7 +8,7 @@ O banco local está em `backend/instance/petlify.db`. Flask-SQLAlchemy resolve `
 
 SQLAlchemy é o ORM: converte objetos Python em registros e consultas SQL. `models.py` descreve a estrutura desejada. Alembic, integrado pelo Flask-Migrate, registra as mudanças dessa estrutura em arquivos versionados.
 
-A primeira migração, `9184049026b0`, cria as sete tabelas atuais. A tabela adicional `alembic_version` informa qual migração já foi aplicada.
+A primeira migração, `9184049026b0`, criou sete tabelas. Agora são 12 tabelas de domínio: stores, users, pets, vaccine_records, appointments, payments, audit_logs, plans, services, plan_benefits, subscriptions e subscription_limits. A revisão atual é `c83f9e205d16`; `alembic_version` informa a revisão aplicada.
 
 ## Relacionamentos atuais
 
@@ -26,11 +26,19 @@ erDiagram
     users ||--o{ payments : cliente
     users o|--o{ payments : confirma
     appointments o|--o{ payments : referencia
+    plans ||--o{ plan_benefits : inclui
+    services ||--o{ plan_benefits : participa
+    pets ||--o{ subscriptions : possui
+    plans ||--o{ subscriptions : define
+    subscriptions ||--o{ subscription_limits : contrata
+    services ||--o{ subscription_limits : limita
+    subscriptions o|--o{ appointments : cobre
+    subscriptions o|--o{ payments : compra
 ```
 
 `id` é a chave primária: identifica um registro. Uma chave estrangeira, como `pets.owner_id`, aponta para o registro relacionado em outra tabela. `nullable=False` exige o preenchimento. Um índice ajuda consultas; um índice único também impede valores repetidos.
 
-`store_id` identifica a loja. Os filtros do backend precisam usá-lo para isolar lojas. As chaves estrangeiras atuais garantem que os registros relacionados existam, mas ainda não garantem que todos pertençam à mesma loja. Essa proteção deverá ser reforçada antes de uso real.
+`store_id` identifica a loja. Os filtros do backend isolam consultas; as chaves compostas das etapas 3 a 5 protegem loja e vínculos exatos de tutor, pet, assinatura e pagamento. Uma chave no banco não substitui a autorização da API.
 
 No modelo atual, e-mail e CPF são únicos em toda a plataforma e cada usuário pertence a uma loja. Permitir um cliente em várias lojas exigirá uma tabela de vínculos e revisão da autenticação.
 
@@ -61,9 +69,9 @@ python -m flask --app app db current
 
 Se já existir um banco antigo criado por `create_all`, faça backup e compare seu esquema com a migração inicial antes de usar `db stamp 9184049026b0`. `stamp` apenas marca a versão: não cria nem corrige tabelas. Não execute `upgrade` inicial sobre tabelas antigas sem preparar essa adoção.
 
-## Próxima etapa do modelo
+## Catálogo e assinatura atuais
 
-O catálogo está em `backend/catalog.py`, com valores fixos da plataforma. `Pet.plan` guarda somente um nome, sem início, vencimento ou histórico. A evolução proposta é:
+O catálogo está nas tabelas e ainda tem definições fixas no backend/frontend. Pet.plan permanece legado; a API calcula o plano pela assinatura vigente. As entidades implementadas são:
 
 | Entidade | Responsabilidade |
 | --- | --- |
@@ -72,10 +80,11 @@ O catálogo está em `backend/catalog.py`, com valores fixos da plataforma. `Pet
 | Benefício do plano | Serviços incluídos e limites de uso |
 | Assinatura | Pet, plano, início, fim e status |
 | Pagamento | Valor histórico e vínculo com a compra |
+| Limite contratado | Cópia de quantidade/período por serviço da assinatura |
 
-O preço pago deve permanecer registrado mesmo que o catálogo mude. Precisamos definir como contar a frequência de utilização e quando a assinatura começa antes de implementar essas regras.
+O preço pago fica no pagamento; os limites contratados ficam em subscription_limits. Cada compra inicia 30 dias. Banho e tosa têm cotas separadas em blocos de 7 ou 15 dias; extras do Plus têm um uso por ciclo. Mudanças no catálogo não alteram os limites contratados.
 
-Outras melhorias pendentes: `birth_date` como `Date` com validação da API; política de preservação do histórico ao excluir contas; proteção contra agendamentos concorrentes; datas e horários com tratamento de fuso; integridade entre registros da mesma loja.
+Pendentes: birth_date como Date; retenção de histórico; concorrência da lotação entre assinaturas diferentes e de compras; datas/fuso; banco persistente. A disputa pela última cota de uma assinatura foi testada em SQLite.
 
 ## Deploy
 
@@ -92,3 +101,5 @@ O SQLite em `/tmp` continua temporário. Esta etapa não configurou um banco ext
 - Endpoint `/api/health`: resposta HTTP 200.
 
 A validação cobre SQLite local, não o deploy nem outro banco relacional.
+
+Os itens acima registram a etapa inicial. Em 30/09/2026, 24 testes de backend passaram, incluindo modelos/migrações, cotas, autorização, concorrência na última cota e rotas da interface. O frontend compilou com TypeScript/Vite. A jornada principal do passo 2 foi validada; resultados e limites estão em [validacao-jornada.md](validacao-jornada.md).

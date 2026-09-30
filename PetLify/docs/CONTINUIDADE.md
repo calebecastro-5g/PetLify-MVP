@@ -1,87 +1,97 @@
 # Continuidade do PetLify
 
-Atualizado em 24/09/2026.
+Atualizado em 30/09/2026. Estado atual da retomada; registros anteriores continuam nos guias de cada etapa e no histórico Git.
 
 ## Como estamos trabalhando
 
-Calebe cursa Engenharia de Software e participa do grupo do projeto. Pediu: “sempre que for realizar algo me ajude explicando, para eu saber oq esta acontecendo”. Explique o problema, a mudança e a verificação passo a passo.
+Calebe cursa Engenharia de Software e participa do grupo. Pediu: “sempre que for realizar algo me ajude explicando, para eu saber oq esta acontecendo”.
+Explicar o problema, a alteração e a verificação passo a passo. Registrar decisões para ata e comunicação com os colegas.
 
-O usuário pretende alternar entre Codex e Claude, provavelmente na mesma pasta, quando terminar o tempo disponível em uma ferramenta. Ainda não há tarefa atribuída ao Claude nem divisão definitiva entre frontend e backend. Evite edições simultâneas nos mesmos arquivos. Este arquivo registra o contexto; não amplia a autorização do pedido atual do usuário.
+Calebe pretende alternar entre Codex e Claude, provavelmente na mesma pasta. Ainda não existe divisão definitiva ou tarefa atribuída ao Claude.
+Antes de editar, conferir mudanças existentes e evitar edição simultânea dos mesmos arquivos.
 
-## Local e origem
+## Ordem aprovada em 30/09/2026
 
-- Pasta de trabalho do aplicativo: `C:/Users/Calebe/OneDrive/Documentos/ChatGPT/Petlify/PetLify-Copia`.
-- Origem da cópia: arquivo ZIP fornecido pelo usuário.
-- Repositório informado: https://github.com/calebecastro-5g/PetLify-MVP
-- Publicado no GitHub em 29/09/2026: branch `codex/banco-assinaturas-integridade`, commit de implementação `9ea1d13`. A main ainda não recebeu essas alterações.
-- Na última consulta, o Git da pasta superior mostrava `PetLify-Copia/` como não rastreado. Confira o estado atual antes de preparar commits; não suponha que esta cópia contém o histórico do repositório remoto.
+O roteiro oficial está em [ROTEIRO.md](ROTEIRO.md), nesta ordem:
+1. Consolidar código e documentação.
+2. Testar uma jornada completa pelo navegador.
+3. Corrigir o tratamento de datas e horários.
+4. Configurar banco persistente antes de usar dados importantes.
+5. Automatizar a verificação no GitHub.
+6. Completar a operação da equipe.
+
+Retomada atual: passos 1 e 2 concluídos em 30/09/2026. Próximo: passo 3, datas e horários. Manter essa ordem; não tratar verificações ainda não feitas como concluídas.
+
+## Versões e pastas
+
+- Repositório: https://github.com/calebecastro-5g/PetLify-MVP
+- Aplicação no repositório Git: github-publicacao/PetLify.
+- Cópia executável local: PetLify-Copia; contém .venv e backend/instance/petlify.db.
+- O Git usado para publicação está em github-publicacao. A pasta superior e a cópia do ZIP não substituem esse histórico.
+- PR #1 integrado à main: https://github.com/calebecastro-5g/PetLify-MVP/pull/1
+- Commit da tela de saldo: 5f8ce01; integração na main: 84911c6.
+- Branch desta retomada: codex/consolidacao-validacao. Incorpora origin/main e os registros posteriores sem reescrever histórico.
+- Passos 1 e 2 publicados no PR #2, aberto para revisão: https://github.com/calebecastro-5g/PetLify-MVP/pull/2. Ainda não integrado à main no encerramento desta etapa.
+- Commits das correções e do roteiro/validação: 829fef6 e 0a9930d.
 
 ## Implementado
 
-1. Migração inicial `9184049026b0` com as sete tabelas originais.
-2. Caminho SQLite local `sqlite:///petlify.db`, resolvido pelo Flask dentro de `backend/instance`.
-3. Render executa migrações no início; seed apenas com `SEED_DEMO=true`. Não imprime a URL do banco no log.
-4. Migração `1d532c0cfeb8` adiciona `plans`, `services`, `plan_benefits`, `subscriptions` e vínculos em pagamentos e agendamentos.
-5. Compra de plano cria assinatura e pagamento na mesma transação. Agendamento valida cobertura e validade. Rota `GET /api/subscriptions` consulta histórico autorizado.
-6. Testes de migração, compra, substituição, senha inválida, cobertura, expiração e isolamento entre lojas.
-7. Guias em `docs/banco-de-dados.md`, `docs/assinaturas.md` e `docs/roteiro-esquema-e-colaboracao.md`.
-8. Registro em Word `docs/registro-de-alteracoes-petlify.docx`. A estrutura foi lida, mas a revisão visual ficou pendente porque o renderizador não encontrou LibreOffice.
+| Etapa | Revisão/alteração | Resultado |
+| --- | --- | --- |
+| 1 | 9184049026b0 | Sete tabelas iniciais e adoção de migrações |
+| 2 | 1d532c0cfeb8 | Catálogo, benefícios e assinaturas por pet; compra transacional |
+| 3 | 73032ec89a26 | Chaves compostas de mesma loja; foreign_keys em SQLite |
+| 4 | a4b62c819f03 | Agendamento exige tutor e assinatura do pet correto |
+| 5 | b72e8d194c05 | Pagamento vinculado ao cliente/agendamento ou tutor/pet da assinatura |
+| 6 | c83f9e205d16 | Cotas separadas por serviço; limites contratados; concorrência na última cota |
+| 7 | 5f8ce01 | Saldo na área do cliente, por pet e por data de atendimento |
+| Retomada, passos 1–2 | codex/consolidacao-validacao | Guias consolidados; jornada validada; rotas diretas React, altura dos cartões e ciclo no checkout corrigidos |
 
-## Regras provisórias e limites
+São 12 tabelas de domínio, além de alembic_version. O arquivo SQLite local fica em backend/instance/petlify.db e não entra no Git.
+GET /api/subscriptions consulta o histórico autorizado; GET /api/subscriptions/<id>/usage consulta uso por bloco.
+Render aplica migrações no início; seed somente com SEED_DEMO=true.
 
-- Ciclos de 30 dias, sem renovação automática; uma nova compra substitui a assinatura anterior.
-- PIX e cartão permanecem simulados.
-- Cotas por serviço implementadas na etapa 6: blocos desde a contratação, cancelamento libera uso e falta consome. Veja `docs/cotas-dos-planos.md`.
-- Migração concede 30 dias de transição aos planos legados reconhecidos, com `source=legacy`, sem criar pagamentos fictícios. Revisar a política antes de usar dados reais.
-- O texto `pets.plan` permanece como legado; a API calcula o plano pela assinatura vigente.
-- Catálogo da interface e metadados do backend ainda contêm listas fixas.
-- Exclusões físicas, fuso horário, concorrência e banco externo persistente ainda precisam evoluir.
+## Regras e limites atuais
 
-## Verificação mais recente
+- Assinatura dura 30 dias; compra nova substitui a anterior, sem renovação automática.
+- Básico: 1 banho e 1 tosa por bloco de 15 dias. Premium: 1 de cada por bloco de 7 dias. Plus: 2 de cada por bloco de 7 dias.
+- Plus inclui hidratação, corte de unha e limpeza de ouvido, 1 de cada por ciclo.
+- Blocos começam na contratação; bloco semanal final de dois dias recebe a cota normal.
+- Pendentes/confirmados reservam uso; concluídos/faltas consomem; cancelados não contam.
+- Cancelamento aceito libera uso; permanece a regra de seis horas para o cliente.
+- As regras contratadas são copiadas em subscription_limits.
+- PIX/cartão são simulados. Seed redefine contas demo; não executar sobre dados a preservar.
+- pets.plan permanece legado. Transição de planos legados concedeu 30 dias sem inventar pagamentos.
+- Datas/fuso, persistência externa, compras repetidas/concorrentes e retenção de histórico precisam evoluir.
+- Cotas transacionais foram testadas em SQLite; isso não certifica lotação simultânea da loja ou outro banco.
+- Catálogo ainda tem definições fixas no frontend/backend.
 
-Em 29/09/2026, os 22 testes passaram em SQLite temporário sobre a cópia Git, incluindo concorrência pela última cota. A migração local foi aplicada após backup: os dados das 11 tabelas anteriores foram comparados e preservados; foram criadas 11 configurações em subscription_limits. foreign_key_check não encontrou violações. O frontend recebeu apenas revisão textual do catálogo; build não executado (dependências locais ausentes). Render e outros bancos não foram testados.
+## Evidências anteriores
 
-Na pasta `backend`, com o ambiente existente na raiz do aplicativo:
+- Etapa 6: 22 testes de backend aprovados em SQLite temporário, incluindo disputa pela última cota e modelos/migrações.
+- Migração local c83f9e205d16: conteúdo das 11 tabelas anteriores preservado; 11 limites de assinatura inseridos; foreign_key_check sem violações.
+- Backup: backend/instance/petlify-before-c83f9e205d16-20260929-232533.db.
+- Etapa 7: TypeScript/Vite compilados; preview temporário mostrou saldos de Mel e Thor. Naquele momento, a jornada completa ainda aguardava a verificação do passo 2.
+- O documento Word registro-de-alteracoes-petlify.docx registra etapas anteriores; revisão visual pendente por ausência do renderizador. Guias Markdown registram os adendos.
+- Render e outros bancos não foram validados.
 
+## Evidências da retomada — 30/09/2026
+
+- Jornada principal pela interface: novo tutor/pet, compra simulada, reserva, bloqueio de cota, cancelamento liberando uso e edição sem duplicação.
+- Apresentação em 1280 × 900 e 390 × 844; conta de outra loja mostrou somente seus dados.
+- Corrigido 404 ao abrir/recarregar rotas React no Flask; arquivos ausentes e endpoints de API continuam retornando 404.
+- Corrigidos cartão sem plano esticado e preço do checkout para ciclo de 30 dias.
+- 24 testes de backend aprovados (22 anteriores e 2 de regressão); build TypeScript/Vite aprovado.
+- Preview reproduzível: backend/preview_journey.py, banco descartável separado do desenvolvimento.
+- Relatório detalhado e texto para ata: [validacao-jornada.md](validacao-jornada.md).
+- Diferença de três horas observada na contratação; será tratada no passo 3, sem reinterpretar o legado indiscriminadamente.
+
+Comando na cópia executável, a partir de backend:
 ```powershell
-..\.venv\Scripts\python.exe -m unittest discover -s tests -v
+..\.venv\Scripts\python.exe -W ignore::DeprecationWarning -m unittest discover -s tests -v
 ```
 
-Não execute o seed sobre dados que deseja preservar: ele redefine contas de demonstração e pode adicionar agendamentos.
+## Registro da retomada
 
-## Próximo passo proposto
-
-Etapa 7 concluída em 29/09/2026: o frontend do cliente agora mostra o saldo de cada serviço por pet e consulta o período correspondente à data escolhida no agendamento. O componente `frontend/src/components/SubscriptionUsage.tsx` usa `GET /api/subscriptions/<id>/usage`; o formulário informa que o saldo será conferido novamente ao salvar. Foram tratados carregamentos antigos ao trocar pet/data, falhas de consulta e tentativa de salvar quando a API rejeita a cota. O build do frontend passou com `npm.cmd run build` (TypeScript e Vite). O preview local usou banco temporário e mostrou os saldos de Mel e Thor. Nenhum dado do banco de desenvolvimento foi alterado nesta etapa.
-
-Registro para ata — 29/09/2026: integrada a visualização de saldo de assinaturas na área do tutor. Próximo passo sugerido: revisar a experiência visual com o grupo e, depois, considerar histórico de consumo para funcionários/donos.
-
-Etapa 6 concluída em 29/09/2026: Calebe definiu cotas separadas por serviço, blocos desde a contratação, extras do Plus 1 vez por ciclo, cancelamento liberando uso e falta consumindo. Migração `c83f9e205d16` aplicada localmente. Backup: `backend/instance/petlify-before-c83f9e205d16-20260929-232533.db`. Criados limites em plan_benefits e cópias contratadas em subscription_limits; módulo quotas.py; validação em criação/alteração/reativação; consulta GET /api/subscriptions/<id>/usage; proteção contra exclusão ou alteração de consumo concluído; textos dos catálogos atualizados. Código sincronizado com PetLify-Copia após comparação para não sobrescrever trabalho divergente.
-
-Guia e registro para ata: `docs/cotas-dos-planos.md`. Próximo passo: mostrar saldo por serviço/período na interface. As alterações desta etapa seguem para a mesma branch `codex/banco-assinaturas-integridade`; conferir o histórico Git para o commit publicado.
-
-Estado mais recente — etapa 5: revisão `b72e8d194c05` aplicada localmente em 24/09/2026. Pagamentos validam cliente do agendamento ou tutor do pet da assinatura. Campo novo `payments.pet_id`; checkout e desvinculação ao excluir pet atualizados. Corrigido autoflush de pagamento avulso com valor ainda vazio. Quatorze testes passaram. Backup anterior: `backend/instance/petlify-before-b72e8d194c05.db`. Ver `docs/integridade-pagamentos.md`.
-
-O envio autorizado foi concluído em 29/09/2026 na branch `codex/banco-assinaturas-integridade`, preservando a pasta `PetLify/` do repositório. A cópia Git está em `../github-publicacao`. A versão remota de origem correspondia ao ZIP recebido (ignorando quebras de linha); arquivos ocultos de configuração ausentes foram incluídos. O push foi confirmado pelo Git e a comparação ficou visível no GitHub.
-
-Pull request ainda não criado: o conector retornou HTTP 403 (Resource not accessible by integration) e o navegador disponível estava sem login. Abrir a comparação abaixo, entrar no GitHub e criar o PR para revisão do grupo:
-https://github.com/calebecastro-5g/PetLify-MVP/compare/main...codex/banco-assinaturas-integridade?expand=1
-
-Registro para ata — 29/09/2026: publicadas as cinco migrações, catálogo/assinaturas, proteções de integridade e documentação. Validação anterior: 14 testes em SQLite. Integração na main e implantação permanecem pendentes.
-
-As cotas propostas na etapa 5 foram definidas e implementadas na etapa 6 acima. Pagamentos reais, concorrência de compras e deploy persistente continuam pendentes. Não há tarefa atribuída ao Claude. Os guias por etapa complementam o documento Word anterior.
-
-Estado mais recente — etapa 4 concluída: revisão `a4b62c819f03` aplicada localmente em 24/09/2026. Agendamentos agora exigem tutor correto e assinatura do próprio pet via chaves compostas. Doze testes passaram. Conteúdo completo das 11 tabelas comparado ao backup `backend/instance/petlify-before-a4b62c819f03.db`, sem alteração de dados. Ver `docs/integridade-tutor-assinatura.md`. Troca de tutor com agendamentos existentes é bloqueada e precisará de regra própria se virar funcionalidade.
-
-Próximo passo a combinar: reforçar o vínculo exato do pagador com agendamento/assinatura ou definir cotas com o grupo. Não há tarefa atribuída ao Claude. O documento Word continua anterior a estas etapas; os guias Markdown contêm os adendos para ata.
-
-Atualização da etapa 3: a proteção de mesma loja descrita abaixo foi implementada em `73032ec89a26` e aplicada localmente. Veja `docs/integridade-entre-lojas.md`. São nove chaves compostas, ativação de foreign_keys nas conexões SQLite e verificação do legado. Dez testes passaram em 24/09/2026. O backup anterior está em `backend/instance/petlify-before-73032ec89a26.db`. Contagens das 11 tabelas foram preservadas e foreign_key_check não encontrou violações.
-
-A correspondência exata de tutor e pet proposta nesta etapa 3 foi concluída na etapa 4 acima.
-
-Proposta anterior, concluída nesta etapa: fortalecer a integridade entre lojas no banco e verificar a ativação das chaves no SQLite.
-
-Antes de alterar, revisar modelos, migrações e rotas de exclusão. Desenhar as restrições, explicar a solução ao estudante e criar uma nova migração. Testar tentativas de vincular tutor, pet, assinatura e agendamento de lojas diferentes, além dos fluxos válidos. Não reescrever migrações já aplicadas como substituto de uma nova revisão.
-
-## Ao encerrar cada etapa
-
-Atualizar este arquivo com arquivos modificados, decisões, comando e resultado de testes, pendências e próximo passo. Ler o estado real dos arquivos antes de retomar; o registro pode ficar desatualizado se outra ferramenta já trabalhou.
+30/09/2026: roteiro de seis passos aprovado e salvo. Referências remotas atualizadas; nova branch incorpora main e registros posteriores.
+Documentação consolidada e cópia executável sincronizada após comparação dos arquivos. Passos 1 e 2 concluídos; próximos passos preservados no roteiro. Nenhum banco persistente externo foi contratado ou implantado.
