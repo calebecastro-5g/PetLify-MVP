@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import DashboardShell from '../components/DashboardShell';
 import ProfileEditor from '../components/ProfileEditor';
 import Spinner from '../components/Spinner';
+import SubscriptionUsage, { PetSubscription } from '../components/SubscriptionUsage';
 import { apiFetch } from '../lib/api';
 import { CatalogItem, formatCurrency, platformPlans, platformServices } from '../lib/catalog';
 
@@ -15,6 +16,7 @@ type Pet = {
   size: string;
   age: number;
   plan?: string | null;
+  subscription?: PetSubscription | null;
   photo_icon?: string;
 };
 
@@ -123,6 +125,7 @@ function ClientDashboard() {
   const [selectedPlanPetId, setSelectedPlanPetId] = useState('');
   const [savingPet, setSavingPet] = useState(false);
   const [savingAppointment, setSavingAppointment] = useState(false);
+  const [usageRevision, setUsageRevision] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
 
@@ -176,17 +179,20 @@ function ClientDashboard() {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     async function loadSlots() {
       if (!appointmentForm.petId || !appointmentForm.date) {
         setSlots([]);
+        setLoadingSlots(false);
         return;
       }
       setLoadingSlots(true);
       try {
         const query = new URLSearchParams({ pet_id: appointmentForm.petId, date: appointmentForm.date });
         if (editingAppointmentId) query.set('appointment_id', String(editingAppointmentId));
-        const response = await apiFetch(`/api/appointment-slots?${query.toString()}`);
+        const response = await apiFetch(`/api/appointment-slots?${query.toString()}`, { signal: controller.signal });
         const data = await response.json();
+        if (controller.signal.aborted) return;
         if (response.ok) {
           setSlots(data.slots || []);
           setAppointmentForm((prev) => {
@@ -195,12 +201,20 @@ function ClientDashboard() {
           });
         } else {
           setSlots([]);
+          setAppointmentForm((prev) => ({ ...prev, slot: '' }));
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setSlots([]);
+          setAppointmentForm((prev) => ({ ...prev, slot: '' }));
+          setError('Não foi possível consultar os horários. Selecione a data novamente.');
         }
       } finally {
-        setLoadingSlots(false);
+        if (!controller.signal.aborted) setLoadingSlots(false);
       }
     }
     loadSlots();
+    return () => controller.abort();
   }, [appointmentForm.petId, appointmentForm.date, editingAppointmentId]);
 
   useEffect(() => {
@@ -323,6 +337,7 @@ function ClientDashboard() {
       const data = await response.json();
       if (!response.ok) {
         setError(data.error || 'Não foi possível salvar o agendamento.');
+        setUsageRevision((value) => value + 1);
         return;
       }
 
@@ -470,6 +485,7 @@ function ClientDashboard() {
                     <span>{pet.species} • {pet.breed}</span>
                     <small>{pet.size} • {pet.age} anos</small>
                     <PlanBadge>{pet.plan ? `Plano ${pet.plan}` : 'Sem plano'}</PlanBadge>
+                    {pet.subscription && <SubscriptionUsage subscription={pet.subscription} petName={pet.name} refreshKey={usageRevision} />}
                     <InlineActions>
                       <MiniButton type="button" onClick={() => startEditPet(pet)}>Editar</MiniButton>
                       <MiniButton type="button" onClick={() => goToPlanPayment(platformPlans[0].id, String(pet.id))}>{pet.plan ? 'Trocar plano' : 'Assinar plano'}</MiniButton>
@@ -496,19 +512,25 @@ function ClientDashboard() {
 
             {showAppointmentForm && (
               <FormCard onSubmit={handleSaveAppointment}>
-                <Field><span>Pet</span><select value={appointmentForm.petId} onChange={(event) => setAppointmentForm((prev) => ({ ...prev, petId: event.target.value }))} required>{petOptions.map((pet) => <option key={pet.value} value={pet.value}>{pet.label}</option>)}</select></Field>
+                <Field><span>Pet</span><select value={appointmentForm.petId} onChange={(event) => setAppointmentForm((prev) => ({ ...prev, petId: event.target.value, slot: '' }))} required>{petOptions.map((pet) => <option key={pet.value} value={pet.value}>{pet.label}</option>)}</select></Field>
                 <Field><span>Tipo</span><select value={appointmentForm.billing} onChange={(event) => setAppointmentForm((prev) => ({ ...prev, billing: event.target.value, serviceId: event.target.value === 'plano' && selectedPlanServices[0] ? selectedPlanServices[0].id : platformServices[0].id }))}>
                   {selectedPlanServices.length > 0 && <option value="plano">Usar plano mensal</option>}
                   <option value="avulso">Serviço avulso</option>
                 </select></Field>
                 <Field><span>Serviço</span><select value={appointmentForm.serviceId} onChange={(event) => setAppointmentForm((prev) => ({ ...prev, serviceId: event.target.value }))}>{serviceOptions.map((service) => <option key={service.id} value={service.id}>{service.displayName}</option>)}</select></Field>
-                <Field><span>Valor</span><ReadOnlyValue>{billingIsPlan ? 'Coberto pelo plano' : formatCurrency(selectedService.amount)}</ReadOnlyValue></Field>
+                <Field><span>Valor</span><ReadOnlyValue>{billingIsPlan ? 'Plano: sujeito à vigência e ao saldo' : formatCurrency(selectedService.amount)}</ReadOnlyValue></Field>
                 <Field><span>Data</span><input type="date" value={appointmentForm.date} onChange={(event) => setAppointmentForm((prev) => ({ ...prev, date: event.target.value, slot: '' }))} required /></Field>
                 <Field><span>Horários disponíveis</span><select value={appointmentForm.slot} onChange={(event) => setAppointmentForm((prev) => ({ ...prev, slot: event.target.value }))} disabled={loadingSlots || slots.length === 0} required>
                   {loadingSlots && <option>Carregando...</option>}
                   {!loadingSlots && slots.length === 0 && <option value="">Nenhum horário livre</option>}
                   {!loadingSlots && slots.map((slot) => <option key={slot.value} value={slot.value}>{slot.label}</option>)}
                 </select></Field>
+                {billingIsPlan && selectedPet?.subscription && (
+                  <div className="full">
+                    <SubscriptionUsage subscription={selectedPet.subscription} petName={selectedPet.name}
+                      at={appointmentForm.slot || null} refreshKey={usageRevision} editing={editingAppointmentId !== null} />
+                  </div>
+                )}
                 <Field className="full"><span>Observações</span><textarea value={appointmentForm.notes} onChange={(event) => setAppointmentForm((prev) => ({ ...prev, notes: event.target.value }))} placeholder="Ex.: pet sensível ao secador" /></Field>
                 <WideButton type="submit" disabled={savingAppointment || !appointmentForm.slot}>{savingAppointment ? <Spinner size="18px" /> : billingIsPlan ? 'Agendar pelo plano' : editingAppointmentId ? 'Salvar e revisar pagamento' : 'Agendar e pagar'}</WideButton>
               </FormCard>
@@ -585,7 +607,7 @@ function ClientDashboard() {
                 <PriceCard key={plan.id}>
                   <strong>{plan.displayName}</strong>
                   <span>{plan.frequency}</span>
-                  <small>{formatCurrency(plan.amount)}/mês</small>
+                  <small>{formatCurrency(plan.amount)} por ciclo de 30 dias</small>
                   <ActionButton type="button" onClick={() => goToPlanPayment(plan.id)}>Assinar este plano</ActionButton>
                 </PriceCard>
               ))}

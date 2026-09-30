@@ -90,6 +90,8 @@ A migração reversa remove as configurações de cotas; também exige voltar o 
 
 ## 7. Validação e continuidade
 
+O frontend da área do cliente agora exibe o saldo por serviço no cartão de cada pet e no formulário de agendamento. Ao informar a data/horário, a tela consulta o bloco correspondente; a API continua sendo a fonte final da decisão. A tela não reserva uso apenas por consultar o saldo.
+
 A suíte testa: migrações/modelos; dados legados; limites separados; fronteiras de períodos; extras; bloco final; cancelamento; falta; reativação; remarcação sem duplicidade; rollback; preservação do consumo; saldo autorizado; cópia contratada e reservas concorrentes, além das regressões anteriores.
 
 Comando, a partir de backend:

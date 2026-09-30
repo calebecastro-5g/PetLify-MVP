@@ -51,6 +51,10 @@ Não execute o seed sobre dados que deseja preservar: ele redefine contas de dem
 
 ## Próximo passo proposto
 
+Etapa 7 concluída em 29/09/2026: o frontend do cliente agora mostra o saldo de cada serviço por pet e consulta o período correspondente à data escolhida no agendamento. O componente `frontend/src/components/SubscriptionUsage.tsx` usa `GET /api/subscriptions/<id>/usage`; o formulário informa que o saldo será conferido novamente ao salvar. Foram tratados carregamentos antigos ao trocar pet/data, falhas de consulta e tentativa de salvar quando a API rejeita a cota. O build do frontend passou com `npm.cmd run build` (TypeScript e Vite). O preview local usou banco temporário e mostrou os saldos de Mel e Thor. Nenhum dado do banco de desenvolvimento foi alterado nesta etapa.
+
+Registro para ata — 29/09/2026: integrada a visualização de saldo de assinaturas na área do tutor. Próximo passo sugerido: revisar a experiência visual com o grupo e, depois, considerar histórico de consumo para funcionários/donos.
+
 Etapa 6 concluída em 29/09/2026: Calebe definiu cotas separadas por serviço, blocos desde a contratação, extras do Plus 1 vez por ciclo, cancelamento liberando uso e falta consumindo. Migração `c83f9e205d16` aplicada localmente. Backup: `backend/instance/petlify-before-c83f9e205d16-20260929-232533.db`. Criados limites em plan_benefits e cópias contratadas em subscription_limits; módulo quotas.py; validação em criação/alteração/reativação; consulta GET /api/subscriptions/<id>/usage; proteção contra exclusão ou alteração de consumo concluído; textos dos catálogos atualizados. Código sincronizado com PetLify-Copia após comparação para não sobrescrever trabalho divergente.
 
 Guia e registro para ata: `docs/cotas-dos-planos.md`. Próximo passo: mostrar saldo por serviço/período na interface. As alterações desta etapa seguem para a mesma branch `codex/banco-assinaturas-integridade`; conferir o histórico Git para o commit publicado.
