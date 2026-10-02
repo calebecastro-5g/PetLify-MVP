@@ -42,7 +42,8 @@ Resultado de 02/10/2026: 32 testes de backend, 14 de frontend, build e QA de com
 O Render demo anterior usava SQLite em /tmp, sem garantia de preservação. A nova configuração exige banco externo em produção.
 Restrição definida por Calebe em 02/10/2026: “Precisamos de uma opção gratuita”.
 Preparado PostgreSQL no Neon Free, com possibilidade de aumentar o plano depois. As seis migrações, cotas, isolamento, concorrência, reinício e backup/restauração passaram em PostgreSQL 18.4 temporário (13 verificações); 39 testes de backend aprovados.
-Conexão Neon/Render e validação da implantação pendentes. Também definir quais dados SQLite precisam ser transferidos; alterar a URL não os copia.
+Projeto PetLify Free criado no Neon em Ohio, banco petlify, branch production, PostgreSQL 18.6. Seis migrações aplicadas; modelos e database-check aprovados; TLS 1.3 confirmado. Backup inicial do Neon restaurado em PostgreSQL local separado, comparando as 13 tabelas.
+Calebe confirmou que os cadastros publicados são demonstração e autorizou começar vazio. Conexão do Render ao Neon, publicação do código preparado e validação de jornada/reinício ainda pendentes; nenhuma configuração Render alterada. Preparada validação pela branch codex/banco-persistente, sem merge, após confirmação específica para guardar a URL secreta no Render.
 Guia didático, resultados e texto para ata: [banco-persistente.md](banco-persistente.md). Não avançar ao passo 5 antes de validar a implantação e a recuperação no ambiente escolhido.
 
 ## Passo 5 — Verificações automáticas

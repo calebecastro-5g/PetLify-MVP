@@ -1,6 +1,6 @@
 # Passo 4 — Banco persistente gratuito
 
-Registro de 02/10/2026. Preparação e validação local concluídas; conexão com Neon e implantação no Render ainda pendentes. A etapa permanece em andamento no [roteiro](ROTEIRO.md).
+Registro de 02/10/2026. Preparação local concluída; projeto Neon criado, migrações aplicadas e backup do Neon restaurado em PostgreSQL local separado. Conexão do Render ao Neon e validação da implantação ainda pendentes. A etapa permanece em andamento no [roteiro](ROTEIRO.md).
 
 Publicado no [PR #4, em rascunho](https://github.com/calebecastro-5g/PetLify-MVP/pull/4), branch `codex/banco-persistente`, commit `6fa54a9`. Depende do PR #3, que depende do #2. Nenhum merge realizado; conferir/ajustar a base após integrar as etapas anteriores.
 
@@ -27,7 +27,39 @@ Gratuito não elimina a necessidade de backups. O Render Free continua podendo s
 7. `database_backup.py` executa `pg_dump`/`pg_restore`. Não sobrescreve backups existentes e só restaura em destino vazio. A restauração é uma transação única e não usa `--clean` para apagar tabelas.
 8. `.gitignore` também exclui arquivos de backup e arquivos `.env`. Não publicar conexões reais no GitHub nem colocar senhas em variáveis `VITE_*`: elas entram no JavaScript entregue ao navegador.
 
-Nenhum modelo ou arquivo de migração anterior foi alterado. A revisão permanece `c83f9e205d16`. Não foi feita transferência de dados locais nem configuração de serviços externos.
+Nenhum modelo ou arquivo de migração anterior foi alterado. A revisão permanece `c83f9e205d16`. O SQLite local não foi transferido nem alterado. A configuração externa realizada nesta atualização está registrada abaixo.
+
+## Estado real da configuração em 02/10/2026
+
+Calebe criou a conta Neon e informou que o Render está em Ohio. O endereço público foi confirmado no painel: [PetLify publicado](https://petlify-mvp.onrender.com). Também confirmou: **“Apenas demonstração; pode começar vazio”**, permitindo começar sem copiar os cadastros do SQLite publicado.
+
+| Item | Resultado verificado |
+| --- | --- |
+| Projeto Neon | PetLify, Free, AWS US East 2 (Ohio) |
+| Branch e banco | `production` (padrão), banco `petlify` |
+| Servidor PostgreSQL | 18.6, informado pela conexão; a preparação local usou 18.4 |
+| Conexão | Direta, sem pooling do Neon; parâmetros `sslmode=require` e `channel_binding=require` preservados |
+| Proteção da conexão | TLS 1.3 confirmado pelo cliente `psql` com os mesmos parâmetros |
+| Migrações | Seis aplicadas até `c83f9e205d16`; repetição de `upgrade` sem alteração adicional |
+| Esquema | Sem diferenças entre modelos e banco; `database-check` aprovado; 12 tabelas de domínio e `alembic_version` |
+| Dados iniciais | 3 planos, 5 serviços e 9 benefícios inseridos pelas migrações; zero lojas, usuários, pets, assinaturas e agendamentos |
+| Backup | `pg_dump` do Neon concluído; restaurado em PostgreSQL local temporário separado, comparando integralmente as 13 tabelas |
+| Origem após recuperação | Nova conexão confirmou os mesmos registros no Neon; nenhum seed executado |
+| Render atual | Free, Ohio, branch `main`, commit `84911c6`, conexão SQLite; nenhuma configuração alterada nesta atualização |
+
+O [painel do projeto Neon](https://console.neon.tech/app/projects/delicate-morning-01044204/branches/br-divine-mud-b4vqt065/tables?database=petlify) mostra as tabelas. Nenhum plano pago ou serviço opcional foi ativado. Outro projeto já existente na conta não foi alterado.
+
+Evidências privadas locais, fora do repositório: `neon-validacao-20261002.json`, capturas em `evidencias-persistencia-20261002` e backup `.private-persistence/backups/petlify-neon-inicial-20261002.dump`. Não colocar credenciais, arquivos de ambiente ou backups no GitHub.
+
+Esses resultados comprovam a criação do esquema e a recuperação do backup inicial do Neon em outro PostgreSQL. Ainda não comprovam a jornada publicada no Render nem a permanência dos cadastros após uma reimplantação do aplicativo. O backup inicial contém apenas catálogo e versão; novos cadastros exigirão novos backups.
+
+### Troca preparada para o Render
+
+O código em `main` ainda não contém o driver e as verificações desta etapa. Alterar apenas `DATABASE_URL` agora não basta. A troca deve combinar o código preparado, a URL secreta e `SEED_DEMO=false`.
+
+Opção preparada para validar antes dos merges: implantar a branch já publicada `codex/banco-persistente`, que contém as etapas dos PRs #2, #3 e #4, no serviço existente PetLify-MVP. Essa operação não integra PRs nem altera a `main`. Depois da revisão e dos merges na ordem combinada, conferir o commit integrado e retornar o Render à `main`.
+
+Antes de guardar a URL no Render, confirmar especificamente essa ação com Calebe: a URL inclui a senha e será transmitida ao Render para permitir que o backend acesse o Neon. Após a troca, conferir logs, saúde, cadastro da primeira loja, pet, compra simulada, reserva, reinício e novo backup. A conexão secreta e essa implantação ainda não foram executadas nesta atualização.
 
 ## Como reproduzir a validação local
 
@@ -66,8 +98,8 @@ Suíte de backend: **39 testes aprovados** (32 anteriores e 7 novos de configura
 
 1. Calebe cria/acessa sua conta no [Neon](https://console.neon.tech). Escolher **Free**, criar projeto do grupo e usar PostgreSQL 18 se oferecido. Se a versão for outra, validar nela antes de adotar. Não contratar plano pago nesta etapa.
 2. Abrir **Connect**, escolher banco/branch corretos e copiar a URL PostgreSQL. Para este MVP pequeno, começar com **Connection pooling desativado**: a conexão direta atende também migrações e backups. Preservar `sslmode=require` e `channel_binding=require` fornecidos pelo painel.
-3. Guardar a URL no campo secreto `DATABASE_URL` do serviço Render. Não colar a senha em conversa, arquivo versionado ou captura de tela. Para ferramentas de backup, usar `DATABASE_BACKUP_URL` com a URL direta do banco correspondente, em ambiente privado.
-4. Integrar os PRs na ordem registrada em CONTINUIDADE.md antes de implantar a branch escolhida. No Render manual, **Root Directory: PetLify**; build `bash render-build.sh`; start `bash render-start.sh`. Para Blueprint, informar o caminho `PetLify/render.yaml` no repositório atual.
+3. Com a confirmação específica de Calebe, guardar a URL no campo secreto `DATABASE_URL` do serviço Render. Não colar a senha em conversa, arquivo versionado ou captura de tela. Para ferramentas de backup, usar `DATABASE_BACKUP_URL` com a URL direta do banco correspondente, em ambiente privado.
+4. Publicar o código preparado junto com a conexão: validar a branch `codex/banco-persistente` conforme a opção acima ou integrar primeiro os PRs na ordem registrada em CONTINUIDADE.md. Não realizar merges automaticamente. No Render manual, **Root Directory: PetLify**; build `bash render-build.sh`; start `bash render-start.sh`. Para Blueprint, informar o caminho `PetLify/render.yaml` no repositório atual.
 5. Manter `SEED_DEMO` desligado para preservar dados. Migrações inserem o catálogo, mas não criam contas demo. Cadastrar a primeira loja pela aplicação. Executar seed apenas em banco de demonstração separado.
 6. Conferir os logs: conexão OK, seis migrações/revisão atual, 12 tabelas OK e Gunicorn ativo. Validar saúde e jornada de cadastro, pet, compra simulada e reserva.
 7. Reiniciar/reimplantar o serviço Render e conferir a permanência dos registros. Fazer backup e restaurar em outro banco **vazio**, nunca sobre o banco em uso. Conferir dados, IDs e jornada no destino.
@@ -104,4 +136,4 @@ Backup contém os dados privados do sistema. Armazenar fora do Git em local prot
 
 ## Texto para ata/comunicação com o grupo
 
-Em 02/10/2026, foi preparada a persistência do PetLify com PostgreSQL e opção gratuita Neon, mantendo caminho de evolução para planos pagos. Foram adicionados driver, configuração de conexão, verificação de implantação e ferramentas de backup/restauração. Produção passou a exigir banco externo. As seis migrações, cotas, isolamento por loja, disputa pelo último uso, permanência após reinício e restauração integral foram verificados em PostgreSQL 18.4 temporário. O banco local foi preservado. A conexão Neon/Render, a decisão sobre transferência de dados SQLite e a validação da implantação permanecem pendentes; nenhuma contratação foi realizada.
+Em 02/10/2026, foi preparada a persistência do PetLify com PostgreSQL e opção gratuita Neon, mantendo caminho de evolução para planos pagos. Foram adicionados driver, configuração de conexão, verificação de implantação e ferramentas de backup/restauração. As seis migrações, cotas, isolamento, concorrência, reinício e restauração foram verificados em PostgreSQL 18.4 temporário. Após Calebe criar a conta, foi criado o projeto PetLify Free em Ohio, banco petlify, branch production e PostgreSQL 18.6. As seis migrações foram aplicadas; esquema, conexão TLS e catálogo inicial foram conferidos. Um backup do Neon foi restaurado em PostgreSQL local separado, comparando as 13 tabelas. Calebe autorizou começar vazio porque os registros publicados são demonstração. O SQLite local foi preservado e não houve contratação paga. Conexão do Render ao Neon, publicação do código preparado e validação da jornada/reinício no ambiente publicado permanecem pendentes.

@@ -90,7 +90,7 @@ Pendentes: birth_date como Date; retenção de histórico; concorrência da lota
 
 O início do Render verifica conexão, aplica `flask db upgrade` e verifica revisão/tabelas antes de iniciar a aplicação. O seed só roda com `SEED_DEMO=true`; deixe-o desligado em um banco com dados reais. Não registramos a URL completa do banco no log, pois ela pode conter senha.
 
-Produção agora exige conexão externa explícita e rejeita SQLite; desenvolvimento ainda pode usá-lo. PostgreSQL no Neon Free foi preparado com Psycopg 3.3.6. Conexão com o serviço e implantação ainda pendentes. O [guia de persistência](banco-persistente.md) registra backup/restauração, limites gratuitos e evolução para um plano pago. Trocar a URL não transfere os registros SQLite.
+O código preparado exige conexão externa explícita em produção e rejeita SQLite; desenvolvimento ainda pode usá-lo. Projeto PetLify no Neon Free criado em Ohio, PostgreSQL 18.6, com as seis migrações aplicadas e conexão direta preparada com Psycopg 3.3.6. O backup inicial do Neon foi restaurado em PostgreSQL local separado. O Render publicado ainda usa main/SQLite e precisa receber o código preparado junto com a conexão secreta. O [guia de persistência](banco-persistente.md) registra resultados, backup/restauração, limites gratuitos e evolução para um plano pago. Calebe autorizou começar vazio porque os registros publicados são demonstração; o SQLite local foi preservado.
 
 ## Validação realizada
 

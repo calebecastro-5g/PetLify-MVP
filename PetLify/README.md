@@ -193,7 +193,7 @@ O esquema atual tem 12 tabelas de domínio, além de alembic_version, na revisã
 
 Em 02/10/2026, o passo 3 aprovou 32 testes de backend, 14 testes de frontend (`npm run test:dates`), build e QA de horários no navegador. UTC para compras/assinaturas/auditoria e America/Sao_Paulo para agenda/vacina estão definidos em [datas e horários](docs/datas-e-horarios.md); não há migração de dados neste passo.
 
-O passo 4 prepara PostgreSQL gratuito no Neon: driver Psycopg, conexão obrigatória em produção, verificação de implantação e backup/restauração nativos. Passaram 39 testes de backend e 13 verificações em PostgreSQL 18.4 temporário, incluindo migrações, cotas, concorrência, reinício e restauração integral. Conexão Neon/Render e implantação permanecem pendentes. O [guia do banco persistente](docs/banco-persistente.md) explica a configuração, a transferência de dados locais e a evolução para um plano pago.
+O passo 4 prepara PostgreSQL gratuito no Neon: driver Psycopg, conexão obrigatória em produção, verificação de implantação e backup/restauração nativos. Passaram 39 testes de backend e 13 verificações em PostgreSQL 18.4 temporário, incluindo migrações, cotas, concorrência, reinício e restauração integral. O projeto Neon Free PetLify foi criado em Ohio; as seis migrações foram aplicadas em PostgreSQL 18.6 e o backup inicial restaurado em PostgreSQL local separado. Conexão do Render ao Neon, publicação do código preparado e jornada/reinício no ambiente publicado permanecem pendentes. O [guia do banco persistente](docs/banco-persistente.md) registra os resultados, a decisão de começar vazio com dados de demonstração e a evolução para um plano pago.
 
 A continuidade do grupo está em [CONTINUIDADE.md](docs/CONTINUIDADE.md). A ordem aprovada em 30/09/2026 está em [ROTEIRO.md](docs/ROTEIRO.md): consolidar, validar a jornada, corrigir horários, preparar persistência, automatizar verificações e completar a operação.
 
@@ -213,7 +213,7 @@ Exemplo de conexão externa (substituir privadamente pela URL real, preservando 
 DATABASE_URL=postgresql://usuario:senha@host/petlify?sslmode=require&channel_binding=require
 ```
 
-Alterar a conexão não copia os dados do SQLite. A validação realizada cobre SQLite e PostgreSQL local; a nuvem será validada após configuração das contas. O caminho preparado para aumentar capacidade é continuar com PostgreSQL, no mesmo provedor ou em outro.
+Alterar a conexão não copia os dados do SQLite. Calebe autorizou começar vazio porque os cadastros publicados são demonstração; o banco de desenvolvimento foi preservado. A validação cobre SQLite, PostgreSQL local e esquema/backup inicial do Neon; a implantação Render ainda precisa ser validada. O caminho preparado para aumentar capacidade é continuar com PostgreSQL, no mesmo provedor ou em outro.
 
 ## Observações importantes
 
@@ -222,7 +222,7 @@ Alterar a conexão não copia os dados do SQLite. A validação realizada cobre 
 - O 2FA real por e-mail ainda não está integrado a um serviço de e-mail.
 - A recuperação de senha existe como fluxo de MVP, mas ainda não envia e-mail real.
 - A configuração de produção exige banco persistente externo.
-- O banco Neon/Render ainda precisa ser conectado e validado, conforme o passo 4.
+- O Neon já foi criado e migrado; falta conectar o Render e validar a implantação, conforme o passo 4.
 
 ## O que não enviar para o GitHub
 
