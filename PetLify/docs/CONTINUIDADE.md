@@ -33,6 +33,7 @@ Retomada atual: passos 1 e 2 concluídos em 30/09/2026; passo 3 concluído em 02
 - Branch dos passos 1–2: codex/consolidacao-validacao. Incorpora origin/main e os registros posteriores sem reescrever histórico.
 - Branch do passo 3: codex/datas-horarios, derivada da anterior; commit f173150.
 - Branch do passo 4: codex/banco-persistente, derivada de codex/datas-horarios. Preparação PostgreSQL gratuita e recuperação de dados validadas localmente; implantação pendente.
+- Preparação do passo 4 publicada no PR #4 em rascunho: https://github.com/calebecastro-5g/PetLify-MVP/pull/4; commit 6fa54a9. Base: codex/datas-horarios. Ordem de revisão/integração: #2, #3, #4, conferindo/ajustando cada base após integrar o anterior. #4 permanece em rascunho até validar a implantação; nenhum merge nesta entrega.
 - Passo 3 publicado no PR #3, aberto para revisão: https://github.com/calebecastro-5g/PetLify-MVP/pull/3. Base: codex/consolidacao-validacao; depende do PR #2. Integrar #2 primeiro e depois conferir/ajustar a base de #3 para main antes de integrar. Nenhum dos dois foi integrado ao encerrar esta etapa.
 - Passos 1 e 2 publicados no PR #2, aberto para revisão: https://github.com/calebecastro-5g/PetLify-MVP/pull/2. Ainda não integrado à main no encerramento desta etapa.
 - Commits das correções e do roteiro/validação: 829fef6 e 0a9930d.

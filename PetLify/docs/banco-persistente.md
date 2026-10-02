@@ -2,6 +2,8 @@
 
 Registro de 02/10/2026. Preparação e validação local concluídas; conexão com Neon e implantação no Render ainda pendentes. A etapa permanece em andamento no [roteiro](ROTEIRO.md).
 
+Publicado no [PR #4, em rascunho](https://github.com/calebecastro-5g/PetLify-MVP/pull/4), branch `codex/banco-persistente`, commit `6fa54a9`. Depende do PR #3, que depende do #2. Nenhum merge realizado; conferir/ajustar a base após integrar as etapas anteriores.
+
 ## Decisão e possibilidade de pagar depois
 
 Calebe definiu: “Precisamos de uma opção gratuita”. Também perguntou: “assim que tivermos caixa, conseguirermos alterar pra um banco pago?”.
