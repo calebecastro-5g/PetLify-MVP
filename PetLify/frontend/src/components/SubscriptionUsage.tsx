@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import styled from 'styled-components';
 import { apiFetch } from '../lib/api';
+import { formatDateTime as dateTime, formatShopInput } from '../lib/dates';
 
 export type PetSubscription = {
   id: number;
@@ -21,14 +22,10 @@ type ServiceUsage = {
 type Usage = { subscription_id: number; status: string; services: ServiceUsage[] };
 type Result = { key: string; data?: Usage; error?: string };
 
-function dateTime(value: string) {
-  return new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-}
-
 export default function SubscriptionUsage({ subscription, petName, at, refreshKey = 0, editing = false }: {
   subscription: PetSubscription;
   petName: string;
-  // undefined = current period; null = appointment time not selected yet.
+  // Shop slot YYYY-MM-DDTHH:mm; undefined = now; null = not selected yet.
   at?: string | null;
   refreshKey?: number;
   editing?: boolean;
@@ -61,7 +58,7 @@ export default function SubscriptionUsage({ subscription, petName, at, refreshKe
   return (
     <Panel aria-labelledby={headingId}>
       <h3 id={headingId}>Saldo do plano de {petName}</h3>
-      <p>{at ? `Para o atendimento em ${dateTime(at)}` : 'Usos disponíveis no período atual'}</p>
+      <p>{at ? `Para o atendimento em ${formatShopInput(at)}` : 'Usos disponíveis no período atual'}</p>
       <small>Assinatura válida até {dateTime(subscription.ends_at)}.</small>
       <div aria-live="polite" aria-busy={at !== null && !current}>
         {at === null ? <p>Selecione uma data e um horário para consultar o saldo desse período.</p> : !current ? (

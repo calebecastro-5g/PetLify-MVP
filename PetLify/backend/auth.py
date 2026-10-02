@@ -1,7 +1,8 @@
 import random
 import re
 import unicodedata
-from datetime import datetime, timedelta
+from datetime import timedelta
+from time_utils import utc_now
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import create_access_token, create_refresh_token
 from email_validator import validate_email, EmailNotValidError
@@ -162,7 +163,7 @@ def login():
         code = f'{random.randint(0, 999999):06d}'
         LOGIN_2FA_CODES[user.email] = {
             'code': code,
-            'expires_at': datetime.utcnow() + timedelta(minutes=10),
+            'expires_at': utc_now() + timedelta(minutes=10),
             'attempts': 0,
         }
         current_app.logger.info('2FA code for %s: %s', user.email, code)
@@ -188,7 +189,7 @@ def verify_2fa():
 
     if not user or not record:
         return jsonify({'error': 'Código inválido'}), 401
-    if datetime.utcnow() > record['expires_at']:
+    if utc_now() > record['expires_at']:
         LOGIN_2FA_CODES.pop(email, None)
         return jsonify({'error': 'Código expirado'}), 401
     if record['attempts'] >= 3:

@@ -4,6 +4,7 @@ import DashboardShell from '../components/DashboardShell';
 import ProfileEditor from '../components/ProfileEditor';
 import Spinner from '../components/Spinner';
 import { apiFetch } from '../lib/api';
+import { formatDateTime as formatDate, monthKey } from '../lib/dates';
 import { platformPlans, platformServices } from '../lib/catalog';
 
 type Employee = { id: number; name: string; email: string; role: string; is_active: boolean; phone?: string | null };
@@ -16,10 +17,6 @@ const initialEmployeeForm = { name: '', email: '', phone: '', password: 'Dev@123
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 function OwnerDashboard() {
@@ -37,11 +34,9 @@ function OwnerDashboard() {
 
   const totalRevenue = useMemo(() => payments.reduce((sum, payment) => sum + payment.amount, 0), [payments]);
   const currentMonthRevenue = useMemo(() => {
-    const now = new Date();
-    return payments.filter((payment) => {
-      const date = new Date(payment.created_at);
-      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-    }).reduce((sum, payment) => sum + payment.amount, 0);
+    const currentMonth = monthKey();
+    return payments.filter((payment) => monthKey(payment.created_at) === currentMonth)
+      .reduce((sum, payment) => sum + payment.amount, 0);
   }, [payments]);
   const activeEmployees = employees.filter((employee) => employee.is_active).length;
   const pendingAppointments = appointments.filter((appointment) => appointment.status === 'Pendente').length;

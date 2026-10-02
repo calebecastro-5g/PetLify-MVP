@@ -23,6 +23,7 @@ from utils import role_required, tenant_required, audit_log
 from auth import normalize_cpf, password_is_valid, slugify
 from catalog import catalog_payload, normalize_plan_name, find_catalog_item, catalog_amount
 from quotas import lock_subscription, quota_error, usage_for
+from time_utils import SHOP_TIMEZONE, utc_now, local_now, local_to_utc, parse_local_datetime
 
 api_bp = Blueprint('api', __name__)
 
@@ -38,15 +39,7 @@ def current_user():
 
 
 def parse_datetime(value, field_name):
-    if isinstance(value, datetime):
-        return value.replace(tzinfo=None) if value.tzinfo else value
-    if not value:
-        raise ValueError(f'{field_name} é obrigatório')
-    try:
-        parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
-        return parsed.replace(tzinfo=None) if parsed.tzinfo else parsed
-    except ValueError as exc:
-        raise ValueError(f'{field_name} deve estar em formato ISO-8601') from exc
+    return parse_local_datetime(value, field_name)
 
 
 def parse_money(value):
@@ -465,8 +458,9 @@ def list_available_slots():
     end_of_day = datetime.combine(selected_date, time(WORK_END_HOUR, 0))
     duration = timedelta(minutes=pet_duration_minutes(pet))
 
+    now = local_now()
     while current + duration <= end_of_day:
-        if current >= datetime.utcnow() and slot_is_available(user.store_id, pet, current, ignore_id):
+        if current >= now and slot_is_available(user.store_id, pet, current, ignore_id):
             slots.append({
                 'value': current.strftime('%Y-%m-%dT%H:%M'),
                 'time': current.strftime('%H:%M'),
@@ -475,7 +469,8 @@ def list_available_slots():
             })
         current += timedelta(minutes=SLOT_STEP_MINUTES)
 
-    return jsonify({'slots': slots, 'duration_minutes': int(duration.total_seconds() // 60)})
+    return jsonify({'slots': slots, 'timezone': SHOP_TIMEZONE,
+                    'duration_minutes': int(duration.total_seconds() // 60)})
 
 
 @api_bp.route('/appointments', methods=['GET'])
@@ -522,13 +517,13 @@ def create_appointment():
         return jsonify({'error': 'Serviço fora do catálogo da plataforma'}), 400
     subscription = None
     if data.get('billing_type') == 'Plano mensal':
-        subscription = pet.subscription_at(scheduled_at)
+        subscription = pet.subscription_at(local_to_utc(scheduled_at))
         if subscription:
             lock_subscription(subscription)
         if not subscription or subscription.status != 'active' or not subscription.covers(service):
             db.session.rollback()
             return jsonify({'error': 'O plano não cobre este serviço na data escolhida.'}), 400
-        error = quota_error(subscription, service, scheduled_at)
+        error = quota_error(subscription, service, local_to_utc(scheduled_at))
         if error:
             db.session.rollback()
             return jsonify({'error': error, 'code': 'subscription_quota_exceeded'}), 409
@@ -582,7 +577,7 @@ def update_appointment(appointment_id):
 
     if data.get('status') == 'Cancelado' and user.role == Role.CLIENT:
         has_payment = Payment.query.filter_by(appointment_id=appointment.id).first() is not None
-        if appointment.scheduled_at - datetime.utcnow() < timedelta(hours=CANCEL_DEADLINE_HOURS) and not has_payment:
+        if local_to_utc(appointment.scheduled_at) - utc_now() < timedelta(hours=CANCEL_DEADLINE_HOURS) and not has_payment:
             return jsonify({'error': 'Cancelamento com menos de 6 horas exige pagamento do valor do serviço.'}), 400
 
     new_scheduled_at = appointment.scheduled_at
@@ -602,7 +597,7 @@ def update_appointment(appointment_id):
     )
     coverage_changed = any(field in data for field in ('service', 'scheduled_at', 'billing_type')) or reactivating
     subscription = (
-        appointment.pet.subscription_at(new_scheduled_at) if coverage_changed
+        appointment.pet.subscription_at(local_to_utc(new_scheduled_at)) if coverage_changed
         else appointment.subscription
     ) if plan_mode else None
     if subscription and coverage_changed:
@@ -611,7 +606,7 @@ def update_appointment(appointment_id):
         db.session.rollback()
         return jsonify({'error': 'O plano não cobre este serviço na data escolhida.'}), 400
     if subscription and coverage_changed and new_status != AppointmentStatus.CANCELED:
-        error = quota_error(subscription, new_service, new_scheduled_at, appointment.id)
+        error = quota_error(subscription, new_service, local_to_utc(new_scheduled_at), appointment.id)
         if error:
             db.session.rollback()
             return jsonify({'error': error, 'code': 'subscription_quota_exceeded'}), 409
@@ -661,7 +656,7 @@ def delete_appointment(appointment_id):
         if appointment.status != AppointmentStatus.CANCELED:
             db.session.rollback()
             return jsonify({'error': 'Cancele o agendamento pelo plano antes de excluir, para liberar a cota explicitamente.'}), 409
-    if user.role == Role.CLIENT and appointment.scheduled_at - datetime.utcnow() < timedelta(hours=CANCEL_DEADLINE_HOURS):
+    if user.role == Role.CLIENT and local_to_utc(appointment.scheduled_at) - utc_now() < timedelta(hours=CANCEL_DEADLINE_HOURS):
         return jsonify({'error': 'Exclusão com menos de 6 horas não é permitida. O cancelamento tardio exige pagamento.'}), 400
 
     for payment in Payment.query.filter_by(appointment_id=appointment.id).all():
@@ -753,9 +748,9 @@ def create_payment():
             db.session.rollback()
             return jsonify({'error': 'Senha do funcionário inválida para pagamento em dinheiro'}), 401
         payment.confirmed_by_employee_id = confirmer.id
-        payment.confirmed_at = datetime.utcnow()
+        payment.confirmed_at = utc_now()
     else:
-        payment.confirmed_at = datetime.utcnow()
+        payment.confirmed_at = utc_now()
 
     if plan:
         now = payment.confirmed_at
@@ -815,7 +810,7 @@ def subscription_usage(subscription_id):
         query = query.filter(Pet.owner_id == user.id)
     subscription = query.first_or_404()
     try:
-        moment = parse_datetime(request.args['at'], 'Data') if 'at' in request.args else datetime.utcnow()
+        moment = local_to_utc(parse_datetime(request.args['at'], 'Data')) if 'at' in request.args else utc_now()
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
     if not subscription.starts_at <= moment < subscription.ends_at:
@@ -925,7 +920,7 @@ def list_notifications():
     if user.role != Role.CLIENT:
         return jsonify([])
 
-    today = datetime.utcnow()
+    today = local_now()
     soon = today + timedelta(days=30)
     notifications = []
     pets = Pet.query.filter_by(owner_id=user.id, store_id=user.store_id).all()

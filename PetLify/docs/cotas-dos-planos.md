@@ -76,7 +76,7 @@ Consultar uma assinatura substituída permite inspecionar uso histórico; o sald
 A consulta não reserva vaga. A decisão final acontece na gravação.
 
 O catálogo do frontend e do backend foi reescrito para esclarecer as cotas separadas e ciclos.
-A área do cliente exibe saldo no cartão do pet e no formulário de agendamento, consultando o período da data selecionada. Os formatos de data/fuso seguem o MVP atual e precisam da revisão do passo 3 de ROTEIRO.md.
+A área do cliente exibe saldo no cartão do pet e no formulário de agendamento, consultando o período da data selecionada. Desde 02/10/2026, agenda/consulta sem offset usa o horário de São Paulo; timestamps de assinatura/blocos incluem Z (UTC). As conversões preservam as fronteiras de tempo decorrido, conforme [datas-e-horarios.md](datas-e-horarios.md).
 
 ## 6. Migração do legado
 
@@ -106,4 +106,4 @@ A revisão final e a aplicação local estão registradas em CONTINUIDADE.md.
 
 Em 29/09/2026, Calebe definiu cotas separadas para banho e tosa, blocos desde a contratação, extras do Plus uma vez por ciclo, cancelamento liberando uso e falta consumindo.
 Foram implementados os limites no banco/API, consulta de saldo e testes de regressão e concorrência. O catálogo foi atualizado para explicar a regra.
-A tela de saldo foi concluída na etapa 7. A próxima verificação é a jornada completa, conforme o passo 2 de ROTEIRO.md.
+A tela de saldo foi concluída na etapa 7. A jornada foi validada no passo 2 e os horários foram corrigidos no passo 3 do roteiro. Próximo: persistência gratuita, conforme ROTEIRO.md.

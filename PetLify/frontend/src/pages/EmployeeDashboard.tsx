@@ -4,6 +4,7 @@ import DashboardShell from '../components/DashboardShell';
 import ProfileEditor from '../components/ProfileEditor';
 import Spinner from '../components/Spinner';
 import { apiFetch } from '../lib/api';
+import { formatDateTime, formatDate, isToday, toDateTimeInput } from '../lib/dates';
 
 type Appointment = {
   id: number;
@@ -46,16 +47,6 @@ const statusOptions = ['Pendente', 'Confirmado', 'Concluído', 'Cancelado', 'Fal
 const vaccineStatusOptions = ['Em dia', 'A vencer', 'Vencida', 'Cancelada'];
 const dogVaccines = ['Polivalente V8/V10', 'Antirrábica', 'Giardíase', 'Gripe Canina', 'Leishmaniose', 'Outra'];
 const catVaccines = ['Polivalente Felina V3/V4/V5', 'Antirrábica', 'Leucemia Felina (FeLV)', 'Outra'];
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-}
-
-function isToday(value: string) {
-  const date = new Date(value);
-  const today = new Date();
-  return date.toDateString() === today.toDateString();
-}
 
 function EmployeeDashboard() {
   const [loading, setLoading] = useState(true);
@@ -213,8 +204,8 @@ function EmployeeDashboard() {
       petId: String(record.pet_id),
       vaccineName: record.vaccine_name,
       customName: '',
-      appliedAt: new Date(record.applied_at).toISOString().slice(0, 16),
-      validUntil: record.valid_until ? new Date(record.valid_until).toISOString().slice(0, 16) : '',
+      appliedAt: toDateTimeInput(record.applied_at),
+      validUntil: record.valid_until ? toDateTimeInput(record.valid_until) : '',
       veterinarian: record.veterinarian || currentEmployeeName,
       lot: record.lot || '',
       status: record.status,
@@ -352,7 +343,7 @@ function EmployeeDashboard() {
                   <ListCard key={record.id}>
                     <CardInfo>
                       <strong>{record.vaccine_name}</strong>
-                      <span>{record.pet_name} • {new Date(record.applied_at).toLocaleDateString('pt-BR')}</span>
+                      <span>{record.pet_name} • {formatDate(record.applied_at)}</span>
                       {record.veterinarian && <small>Responsável: {record.veterinarian}</small>}
                     </CardInfo>
                     <RightBlock>
