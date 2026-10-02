@@ -84,13 +84,13 @@ O catálogo está nas tabelas e ainda tem definições fixas no backend/frontend
 
 O preço pago fica no pagamento; os limites contratados ficam em subscription_limits. Cada compra inicia 30 dias. Banho e tosa têm cotas separadas em blocos de 7 ou 15 dias; extras do Plus têm um uso por ciclo. Mudanças no catálogo não alteram os limites contratados.
 
-Pendentes: birth_date como Date; retenção de histórico; concorrência da lotação entre assinaturas diferentes e de compras; implantação do banco persistente. Datas/fuso foram tratados no [passo 3](datas-e-horarios.md). A disputa pela última cota de uma assinatura foi testada em SQLite e PostgreSQL local.
+Pendentes: birth_date como Date; retenção de histórico; concorrência da lotação entre assinaturas diferentes e de compras; backups automáticos. Datas/fuso foram tratados no [passo 3](datas-e-horarios.md). A disputa pela última cota de uma assinatura foi testada em SQLite e PostgreSQL local; implantação persistente concluída no passo 4.
 
 ## Deploy
 
 O início do Render verifica conexão, aplica `flask db upgrade` e verifica revisão/tabelas antes de iniciar a aplicação. O seed só roda com `SEED_DEMO=true`; deixe-o desligado em um banco com dados reais. Não registramos a URL completa do banco no log, pois ela pode conter senha.
 
-O código preparado exige conexão externa explícita em produção e rejeita SQLite; desenvolvimento ainda pode usá-lo. Projeto PetLify no Neon Free criado em Ohio, PostgreSQL 18.6, com as seis migrações aplicadas e conexão direta preparada com Psycopg 3.3.6. O backup inicial do Neon foi restaurado em PostgreSQL local separado. O Render publicado ainda usa main/SQLite e precisa receber o código preparado junto com a conexão secreta. O [guia de persistência](banco-persistente.md) registra resultados, backup/restauração, limites gratuitos e evolução para um plano pago. Calebe autorizou começar vazio porque os registros publicados são demonstração; o SQLite local foi preservado.
+O código publicado exige conexão externa explícita em produção e rejeita SQLite; desenvolvimento ainda pode usá-lo. Projeto PetLify no Neon Free em Ohio, PostgreSQL 18.6, com seis migrações aplicadas e conexão direta por Psycopg 3.3.6. O Render usa codex/banco-persistente com DATABASE_URL Neon e SEED_DEMO=false, sem merge dos PRs. Jornada publicada e reinício preservando registros foram verificados; backup com os novos cadastros restaurado em PostgreSQL local separado. O [guia de persistência](banco-persistente.md) registra resultados, limites gratuitos e evolução paga. Calebe autorizou começar vazio porque os registros antigos eram demonstração; SQLite local preservado. Revisar/integrar PRs antes de retornar o Render à main.
 
 ## Validação realizada
 

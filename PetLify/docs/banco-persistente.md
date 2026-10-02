@@ -1,8 +1,8 @@
 # Passo 4 — Banco persistente gratuito
 
-Registro de 02/10/2026. Preparação local concluída; projeto Neon criado, migrações aplicadas e backup do Neon restaurado em PostgreSQL local separado. Conexão do Render ao Neon e validação da implantação ainda pendentes. A etapa permanece em andamento no [roteiro](ROTEIRO.md).
+Registro de 02/10/2026. **Passo 4 concluído:** projeto Neon criado/migrado, Render conectado e publicado, jornada verificada, dados preservados após reinício e backup com os novos registros restaurado em PostgreSQL local separado. Próxima etapa: verificações automáticas no GitHub, conforme o [roteiro](ROTEIRO.md).
 
-Publicado no [PR #4, em rascunho](https://github.com/calebecastro-5g/PetLify-MVP/pull/4), branch `codex/banco-persistente`, commit `6fa54a9`. Depende do PR #3, que depende do #2. Nenhum merge realizado; conferir/ajustar a base após integrar as etapas anteriores.
+Publicado no [PR #4, em rascunho](https://github.com/calebecastro-5g/PetLify-MVP/pull/4), branch `codex/banco-persistente`, código de persistência no commit `6fa54a9`. Primeira implantação aprovada com `05b7ab7`. Depende do PR #3, que depende do #2. Nenhum merge realizado; conferir/ajustar a base após integrar as etapas anteriores. A descrição e o estado de rascunho do PR ainda precisam ser atualizados; os commits/documentos registram os resultados atuais.
 
 ## Decisão e possibilidade de pagar depois
 
@@ -42,24 +42,39 @@ Calebe criou a conta Neon e informou que o Render está em Ohio. O endereço pú
 | Proteção da conexão | TLS 1.3 confirmado pelo cliente `psql` com os mesmos parâmetros |
 | Migrações | Seis aplicadas até `c83f9e205d16`; repetição de `upgrade` sem alteração adicional |
 | Esquema | Sem diferenças entre modelos e banco; `database-check` aprovado; 12 tabelas de domínio e `alembic_version` |
-| Dados iniciais | 3 planos, 5 serviços e 9 benefícios inseridos pelas migrações; zero lojas, usuários, pets, assinaturas e agendamentos |
+| Dados antes da jornada | 3 planos, 5 serviços e 9 benefícios inseridos pelas migrações; zero lojas, usuários, pets, assinaturas e agendamentos |
 | Backup | `pg_dump` do Neon concluído; restaurado em PostgreSQL local temporário separado, comparando integralmente as 13 tabelas |
 | Origem após recuperação | Nova conexão confirmou os mesmos registros no Neon; nenhum seed executado |
-| Render atual | Free, Ohio, branch `main`, commit `84911c6`, conexão SQLite; nenhuma configuração alterada nesta atualização |
+| Render na criação do Neon | Free, Ohio, branch `main`, commit `84911c6`, conexão SQLite; posteriormente atualizado conforme a validação abaixo |
 
 O [painel do projeto Neon](https://console.neon.tech/app/projects/delicate-morning-01044204/branches/br-divine-mud-b4vqt065/tables?database=petlify) mostra as tabelas. Nenhum plano pago ou serviço opcional foi ativado. Outro projeto já existente na conta não foi alterado.
 
 Evidências privadas locais, fora do repositório: `neon-validacao-20261002.json`, capturas em `evidencias-persistencia-20261002` e backup `.private-persistence/backups/petlify-neon-inicial-20261002.dump`. Não colocar credenciais, arquivos de ambiente ou backups no GitHub.
 
-Esses resultados comprovam a criação do esquema e a recuperação do backup inicial do Neon em outro PostgreSQL. Ainda não comprovam a jornada publicada no Render nem a permanência dos cadastros após uma reimplantação do aplicativo. O backup inicial contém apenas catálogo e versão; novos cadastros exigirão novos backups.
+O backup inicial contém apenas catálogo e versão. Um segundo backup, descrito abaixo, inclui os cadastros da jornada publicada e também foi restaurado. Novas gravações exigem novos backups.
 
-### Troca preparada para o Render
+### Troca realizada no Render
 
-O código em `main` ainda não contém o driver e as verificações desta etapa. Alterar apenas `DATABASE_URL` agora não basta. A troca deve combinar o código preparado, a URL secreta e `SEED_DEMO=false`.
+O código em `main` ainda não contém o driver e as verificações desta etapa. A troca combinou o código preparado, a URL secreta em `DATABASE_URL` e `SEED_DEMO=false`.
 
-Opção preparada para validar antes dos merges: implantar a branch já publicada `codex/banco-persistente`, que contém as etapas dos PRs #2, #3 e #4, no serviço existente PetLify-MVP. Essa operação não integra PRs nem altera a `main`. Depois da revisão e dos merges na ordem combinada, conferir o commit integrado e retornar o Render à `main`.
+Calebe recebeu a explicação sobre Render, Neon, variáveis e deploy e autorizou: **“certo, pode prosseguir”**. Foi publicada a branch `codex/banco-persistente`, que contém as etapas dos PRs #2, #3 e #4, no serviço existente PetLify-MVP. Nenhum PR foi integrado e a `main` não foi alterada. Depois da revisão e dos merges na ordem combinada, conferir o commit integrado e retornar o Render à `main`.
 
-Antes de guardar a URL no Render, confirmar especificamente essa ação com Calebe: a URL inclui a senha e será transmitida ao Render para permitir que o backend acesse o Neon. Após a troca, conferir logs, saúde, cadastro da primeira loja, pet, compra simulada, reserva, reinício e novo backup. A conexão secreta e essa implantação ainda não foram executadas nesta atualização.
+A URL com senha foi guardada somente na configuração secreta do Render, sem publicá-la no código, conversa ou capturas. As demais credenciais do serviço foram preservadas. Auto-Deploy já estava em **On Commit** e foi mantido; novos commits nesta branch podem iniciar outra publicação.
+
+### Validação da implantação e fechamento do passo 4
+
+1. **Compilação:** dependências Python, Psycopg e build TypeScript/Vite instalados/compilados pelo Render. Root Directory continua `PetLify`; build/start permanecem `bash render-build.sh` / `bash render-start.sh`.
+2. **Correção da configuração:** a primeira publicação compilou, mas recusou iniciar porque o campo secreto ainda entregava SQLite. A edição feita enquanto o valor estava oculto não o substituiu. Foi aberto apenas o campo da conexão, editado seu valor, conferida a correspondência com a URL Neon e salva nova publicação. `SEED_DEMO=false` também foi conferido. A proteção de produção evitou iniciar com SQLite; nenhum modelo ou código precisou mudar.
+3. **Inicialização aprovada:** deploy `dep-db01q5tg1s2s73c8hsd0`, commit `05b7ab7`, Live em 02/10/2026 às 18h09 de São Paulo. Logs: “Conexão OK.”, revisão/tabelas aprovadas e Gunicorn ativo. Endpoint `/api/health` aprovado.
+4. **Jornada pela API publicada:** criada uma loja separada, **Loja QA Persistência (demonstração)**, com dono/tutor fictícios e um pet. Nenhum CPF, telefone, aceite de termos ou dado pessoal real usado. Compra PIX simulada do Básico criou pagamento/assinatura. Reserva em 04/10/2026 às 08h voltou com `-03:00`; segundo banho bloqueado por cota; cancelamento liberou uso e nova reserva foi aceita. Nenhum pagamento real realizado.
+5. **Conferência na interface:** login de QA na área do cliente mostrou pet, plano, saldo, pagamento simulado e reservas cancelada/pendente. Recarregar diretamente `/cliente` também funcionou.
+6. **Reinício real do Render:** ação Restart service; logs mostraram nova execução às 18h12–18h13, com conexão/revisão/tabelas novamente aprovadas e novo worker. Novo login consultou pet, pagamento, assinatura, dois agendamentos e saldo: comparação integral dos retornos com os anteriores, sem diferenças. A interface recarregada mostrou os mesmos registros.
+7. **Prova da origem dos dados:** consulta direta ao Neon confirmou IDs e vínculos criados pela API do Render. Os dados não estavam sendo gravados em um SQLite separado.
+8. **Segundo backup:** `petlify-neon-apos-render-20261002.dump` gerado por `pg_dump` e restaurado em PostgreSQL local temporário vazio. Comparação integral das 13 tabelas aprovada; segunda restauração sobre destino preenchido recusada; nova inserção no destino validou a sequência de IDs. Nenhuma restauração sobre o banco publicado.
+
+No segundo backup: 1 loja, 2 usuários, 1 pet, 1 pagamento, 1 assinatura, 2 limites contratados, 2 agendamentos, 15 registros de auditoria, 3 planos, 5 serviços e 9 benefícios. Vacinas vazias; revisão Alembic preservada. Os registros de QA estão identificados como demonstração e permaneceram no Neon. O seed automático continua desligado; o grupo pode cadastrar sua própria loja separada pela tela de cadastro.
+
+Evidências locais fora do Git: `render-validacao-20261002.json`, capturas `render-deploy-neon-aprovado.jpg` e `petlify-apos-reinicio.jpg` em `evidencias-persistencia-20261002`, além do segundo backup privado. Esta validação não configura backups automáticos, não verifica restauração em outro serviço de nuvem e não integra PRs. A etapa 5 fará as verificações automáticas; revisão/integração dos PRs continua na ordem #2 → #3 → #4.
 
 ## Como reproduzir a validação local
 
@@ -136,4 +151,4 @@ Backup contém os dados privados do sistema. Armazenar fora do Git em local prot
 
 ## Texto para ata/comunicação com o grupo
 
-Em 02/10/2026, foi preparada a persistência do PetLify com PostgreSQL e opção gratuita Neon, mantendo caminho de evolução para planos pagos. Foram adicionados driver, configuração de conexão, verificação de implantação e ferramentas de backup/restauração. As seis migrações, cotas, isolamento, concorrência, reinício e restauração foram verificados em PostgreSQL 18.4 temporário. Após Calebe criar a conta, foi criado o projeto PetLify Free em Ohio, banco petlify, branch production e PostgreSQL 18.6. As seis migrações foram aplicadas; esquema, conexão TLS e catálogo inicial foram conferidos. Um backup do Neon foi restaurado em PostgreSQL local separado, comparando as 13 tabelas. Calebe autorizou começar vazio porque os registros publicados são demonstração. O SQLite local foi preservado e não houve contratação paga. Conexão do Render ao Neon, publicação do código preparado e validação da jornada/reinício no ambiente publicado permanecem pendentes.
+Em 02/10/2026, foi concluído o passo 4 do PetLify. Foi criado o projeto Neon Free PetLify em Ohio, banco petlify, branch production, PostgreSQL 18.6, com seis migrações aplicadas e TLS conferido. Com autorização de Calebe, o Render passou a usar a conexão Neon e a branch codex/banco-persistente, sem merges e com SEED_DEMO=false. A primeira tentativa recusou SQLite; o campo secreto foi corrigido e a publicação aprovada. Uma loja fictícia separada validou cadastro, compra simulada, reserva, cota e cancelamento. Reinício do Render preservou integralmente os registros e o saldo, também conferidos na interface e diretamente no Neon. Backup com os novos registros foi restaurado em PostgreSQL local separado, comparando as 13 tabelas e validando sequências de IDs. SQLite local preservado; nenhuma contratação paga ou cobrança real realizada. Próximo passo: automatizar verificações no GitHub. Backups automáticos, restauração em outro serviço de nuvem e integração dos PRs permanecem fora desta validação.

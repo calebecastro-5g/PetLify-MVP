@@ -8,7 +8,7 @@ Este registro mantém a ordem combinada; decisões de contratação de serviços
 | 1 | Consolidar código e documentação | Concluído em 30/09/2026 | Versão de trabalho incorpora a main; guias descrevem o código atual; registros locais preservados |
 | 2 | Testar uma jornada completa pelo navegador | Concluído em 30/09/2026 | Cadastro, pet, compra simulada, agendamento, cota, cancelamento e remarcação verificados; celular e isolamento entre lojas avaliados |
 | 3 | Corrigir o tratamento de datas e horários | Concluído em 02/10/2026 | Contrato de horários definido; conversão entre armazenamento e exibição testada; legado tratado explicitamente |
-| 4 | Configurar banco persistente antes de usar dados importantes | Em andamento em 02/10/2026 | Banco escolhido; migrações testadas; backup e restauração demonstrados; implantação validada |
+| 4 | Configurar banco persistente antes de usar dados importantes | Concluído em 02/10/2026 | Banco escolhido; migrações testadas; backup e restauração demonstrados; implantação validada |
 | 5 | Automatizar a verificação no GitHub | Pendente | Testes de backend e build frontend executam nos pull requests e indicam falhas |
 | 6 | Completar a operação da equipe | Pendente | Histórico de usos para funcionário/dono; política de retenção de registros definida e implementada |
 
@@ -43,8 +43,8 @@ O Render demo anterior usava SQLite em /tmp, sem garantia de preservação. A no
 Restrição definida por Calebe em 02/10/2026: “Precisamos de uma opção gratuita”.
 Preparado PostgreSQL no Neon Free, com possibilidade de aumentar o plano depois. As seis migrações, cotas, isolamento, concorrência, reinício e backup/restauração passaram em PostgreSQL 18.4 temporário (13 verificações); 39 testes de backend aprovados.
 Projeto PetLify Free criado no Neon em Ohio, banco petlify, branch production, PostgreSQL 18.6. Seis migrações aplicadas; modelos e database-check aprovados; TLS 1.3 confirmado. Backup inicial do Neon restaurado em PostgreSQL local separado, comparando as 13 tabelas.
-Calebe confirmou que os cadastros publicados são demonstração e autorizou começar vazio. Conexão do Render ao Neon, publicação do código preparado e validação de jornada/reinício ainda pendentes; nenhuma configuração Render alterada. Preparada validação pela branch codex/banco-persistente, sem merge, após confirmação específica para guardar a URL secreta no Render.
-Guia didático, resultados e texto para ata: [banco-persistente.md](banco-persistente.md). Não avançar ao passo 5 antes de validar a implantação e a recuperação no ambiente escolhido.
+Calebe confirmou que os cadastros publicados são demonstração e autorizou começar vazio. Após explicação/autorização específica, Render conectado ao Neon com SEED_DEMO=false e branch codex/banco-persistente publicada, sem merge. Jornada de QA publicada aprovada; reinício preservou cadastros/saldo; IDs conferidos diretamente no Neon. Novo backup com os registros restaurado em PostgreSQL local separado, comparando as 13 tabelas e sequências.
+Resultado de 02/10/2026: passo 4 concluído. Guia didático, resultados, limitação da primeira tentativa e texto para ata: [banco-persistente.md](banco-persistente.md). Próximo: passo 5. Metadados/revisão/integração dos PRs e backups automáticos ainda pendentes; não foi testada restauração em outro serviço de nuvem.
 
 ## Passo 5 — Verificações automáticas
 
