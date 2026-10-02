@@ -106,3 +106,5 @@ A biblioteca padrão [ZoneInfo do Python](https://docs.python.org/3/library/zone
 Em 02/10/2026, foram corrigidos o contrato de datas, as comparações de vigência/cotas e seis horas, a agenda de hoje e a edição/exibição de horários nos painéis. Os registros antigos foram preservados conforme sua origem e as limitações do legado foram documentadas. Validação: 32 testes de backend, 14 de frontend, build e verificação manual no navegador aprovados.
 
 Passo 3 do roteiro concluído. Próximo: passo 4, banco persistente. Calebe definiu em 02/10/2026: **“Precisamos de uma opção gratuita”**. Não há serviço externo configurado ou contratado neste passo; destino, migrações no banco escolhido e backup/restauração ainda precisam ser preparados e validados.
+
+Publicação: commit `f173150`, branch `codex/datas-horarios`, [PR #3](https://github.com/calebecastro-5g/PetLify-MVP/pull/3) aberto em 02/10/2026. Ele usa a branch do [PR #2](https://github.com/calebecastro-5g/PetLify-MVP/pull/2) como base para isolar este passo. Revisar/integrar #2 primeiro; depois conferir/ajustar a base de #3 para main antes de integrá-lo. Ambos permanecem abertos; não houve merge automático.

@@ -31,7 +31,8 @@ Retomada atual: passos 1 e 2 concluídos em 30/09/2026; passo 3 concluído em 02
 - PR #1 integrado à main: https://github.com/calebecastro-5g/PetLify-MVP/pull/1
 - Commit da tela de saldo: 5f8ce01; integração na main: 84911c6.
 - Branch dos passos 1–2: codex/consolidacao-validacao. Incorpora origin/main e os registros posteriores sem reescrever histórico.
-- Branch do passo 3: codex/datas-horarios, derivada da anterior; publicação do novo PR registrada ao final da etapa.
+- Branch do passo 3: codex/datas-horarios, derivada da anterior; commit f173150.
+- Passo 3 publicado no PR #3, aberto para revisão: https://github.com/calebecastro-5g/PetLify-MVP/pull/3. Base: codex/consolidacao-validacao; depende do PR #2. Integrar #2 primeiro e depois conferir/ajustar a base de #3 para main antes de integrar. Nenhum dos dois foi integrado ao encerrar esta etapa.
 - Passos 1 e 2 publicados no PR #2, aberto para revisão: https://github.com/calebecastro-5g/PetLify-MVP/pull/2. Ainda não integrado à main no encerramento desta etapa.
 - Commits das correções e do roteiro/validação: 829fef6 e 0a9930d.
 
