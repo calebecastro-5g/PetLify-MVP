@@ -8,7 +8,7 @@ Este registro mantém a ordem combinada; decisões de contratação de serviços
 | 1 | Consolidar código e documentação | Concluído em 30/09/2026 | Versão de trabalho incorpora a main; guias descrevem o código atual; registros locais preservados |
 | 2 | Testar uma jornada completa pelo navegador | Concluído em 30/09/2026 | Cadastro, pet, compra simulada, agendamento, cota, cancelamento e remarcação verificados; celular e isolamento entre lojas avaliados |
 | 3 | Corrigir o tratamento de datas e horários | Concluído em 02/10/2026 | Contrato de horários definido; conversão entre armazenamento e exibição testada; legado tratado explicitamente |
-| 4 | Configurar banco persistente antes de usar dados importantes | Pendente | Banco escolhido; migrações testadas; backup e restauração demonstrados; implantação validada |
+| 4 | Configurar banco persistente antes de usar dados importantes | Em andamento em 02/10/2026 | Banco escolhido; migrações testadas; backup e restauração demonstrados; implantação validada |
 | 5 | Automatizar a verificação no GitHub | Pendente | Testes de backend e build frontend executam nos pull requests e indicam falhas |
 | 6 | Completar a operação da equipe | Pendente | Histórico de usos para funcionário/dono; política de retenção de registros definida e implementada |
 
@@ -39,11 +39,11 @@ Resultado de 02/10/2026: 32 testes de backend, 14 de frontend, build e QA de com
 
 ## Passo 4 — Persistência
 
-O Render demo usa SQLite em /tmp, sem garantia de preservação.
+O Render demo anterior usava SQLite em /tmp, sem garantia de preservação. A nova configuração exige banco externo em produção.
 Restrição definida por Calebe em 02/10/2026: “Precisamos de uma opção gratuita”.
-Escolher com o grupo um serviço/banco compatível com essa restrição e os requisitos.
-Preparar e testar migrações em ambiente separado, backup e restauração antes da adoção.
-Conectar serviço e implantar somente quando destino, credenciais e eventuais custos estiverem definidos.
+Preparado PostgreSQL no Neon Free, com possibilidade de aumentar o plano depois. As seis migrações, cotas, isolamento, concorrência, reinício e backup/restauração passaram em PostgreSQL 18.4 temporário (13 verificações); 39 testes de backend aprovados.
+Conexão Neon/Render e validação da implantação pendentes. Também definir quais dados SQLite precisam ser transferidos; alterar a URL não os copia.
+Guia didático, resultados e texto para ata: [banco-persistente.md](banco-persistente.md). Não avançar ao passo 5 antes de validar a implantação e a recuperação no ambiente escolhido.
 
 ## Passo 5 — Verificações automáticas
 

@@ -7,6 +7,10 @@ backend/__pycache__/
 backend/*.pyc
 backend/instance/*.db
 backend/.env
+**/.env
+backups/
+*.dump
+*.backup
 
 # Node
 frontend/node_modules/

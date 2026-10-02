@@ -144,7 +144,7 @@ render-start.sh
 1. Suba este projeto para um repositório no GitHub.
 2. No Render, escolha **New > Blueprint**.
 3. Conecte o repositório.
-4. Confirme o serviço definido no `render.yaml`.
+4. Informe `PetLify/render.yaml` como caminho do Blueprint e configure `DATABASE_URL` com a conexão PostgreSQL real.
 5. Aguarde o build.
 
 O Render executará:
@@ -165,6 +165,7 @@ Configurações principais:
 
 ```text
 Runtime: Python
+Root Directory: PetLify
 Build Command: bash render-build.sh
 Start Command: bash render-start.sh
 ```
@@ -173,7 +174,7 @@ Variáveis de ambiente recomendadas:
 
 ```text
 FLASK_ENV=production
-DATABASE_URL=sqlite:////tmp/petlify.db
+DATABASE_URL=conexao-postgresql-real-do-painel-neon
 CORS_ORIGINS=*
 SECRET_KEY=gerar-no-render
 JWT_SECRET_KEY=gerar-no-render
@@ -190,13 +191,15 @@ Planos, serviços, benefícios e assinaturas têm validade de 30 dias. As cotas 
 
 O esquema atual tem 12 tabelas de domínio, além de alembic_version, na revisão c83f9e205d16. As chaves compostas protegem os vínculos entre loja, tutor, pet, assinatura e pagamento. Em 30/09/2026, a validação aprovou 24 testes de backend em SQLite, o build TypeScript/Vite e a jornada principal pela interface; veja [o registro dos resultados](docs/validacao-jornada.md).
 
-Em 02/10/2026, o passo 3 aprovou 32 testes de backend, 14 testes de frontend (`npm run test:dates`), build e QA de horários no navegador. UTC para compras/assinaturas/auditoria e America/Sao_Paulo para agenda/vacina estão definidos em [datas e horários](docs/datas-e-horarios.md); não há migração de dados neste passo. Próxima etapa: banco persistente gratuito.
+Em 02/10/2026, o passo 3 aprovou 32 testes de backend, 14 testes de frontend (`npm run test:dates`), build e QA de horários no navegador. UTC para compras/assinaturas/auditoria e America/Sao_Paulo para agenda/vacina estão definidos em [datas e horários](docs/datas-e-horarios.md); não há migração de dados neste passo.
+
+O passo 4 prepara PostgreSQL gratuito no Neon: driver Psycopg, conexão obrigatória em produção, verificação de implantação e backup/restauração nativos. Passaram 39 testes de backend e 13 verificações em PostgreSQL 18.4 temporário, incluindo migrações, cotas, concorrência, reinício e restauração integral. Conexão Neon/Render e implantação permanecem pendentes. O [guia do banco persistente](docs/banco-persistente.md) explica a configuração, a transferência de dados locais e a evolução para um plano pago.
 
 A continuidade do grupo está em [CONTINUIDADE.md](docs/CONTINUIDADE.md). A ordem aprovada em 30/09/2026 está em [ROTEIRO.md](docs/ROTEIRO.md): consolidar, validar a jornada, corrigir horários, preparar persistência, automatizar verificações e completar a operação.
 
 No Render, os dados de demonstração só são inseridos quando `SEED_DEMO=true`. Deixe essa opção desligada para preservar contas reais.
 
-Para a primeira fase, o projeto usa SQLite para facilitar a execução local e o deploy demo.
+O desenvolvimento local pode continuar com SQLite. Produção exige banco externo persistente e não aceita SQLite.
 
 Configuração local:
 
@@ -204,17 +207,13 @@ Configuração local:
 DATABASE_URL=sqlite:///petlify.db
 ```
 
-Configuração usada no Render demo:
+Exemplo de conexão externa (substituir privadamente pela URL real, preservando SSL):
 
 ```text
-DATABASE_URL=sqlite:////tmp/petlify.db
+DATABASE_URL=postgresql://usuario:senha@host/petlify?sslmode=require&channel_binding=require
 ```
 
-Para evolução futura, o sistema continua preparado para banco relacional via SQLAlchemy. Exemplo com MySQL externo:
-
-```text
-DATABASE_URL=mysql+pymysql://usuario:senha@host/petlify_db
-```
+Alterar a conexão não copia os dados do SQLite. A validação realizada cobre SQLite e PostgreSQL local; a nuvem será validada após configuração das contas. O caminho preparado para aumentar capacidade é continuar com PostgreSQL, no mesmo provedor ou em outro.
 
 ## Observações importantes
 
@@ -222,8 +221,8 @@ DATABASE_URL=mysql+pymysql://usuario:senha@host/petlify_db
 - O modelo multi-tenant já está representado no banco por Pet Shop/loja.
 - O 2FA real por e-mail ainda não está integrado a um serviço de e-mail.
 - A recuperação de senha existe como fluxo de MVP, mas ainda não envia e-mail real.
-- O banco SQLite em ambiente gratuito de deploy é indicado para demonstração, não para produção final.
-- Para produção real, recomenda-se usar banco persistente externo.
+- A configuração de produção exige banco persistente externo.
+- O banco Neon/Render ainda precisa ser conectado e validado, conforme o passo 4.
 
 ## O que não enviar para o GitHub
 
@@ -266,7 +265,7 @@ Esta versão reforça principalmente o fluxo de agendamento, conforme o segundo 
 
 ## Observação para subir no GitHub/Render
 
-Ao enviar para o GitHub, envie o conteúdo desta pasta como raiz do repositório. A tela inicial do GitHub deve mostrar diretamente:
+No repositório atual, a aplicação fica na subpasta `PetLify`. Ela contém:
 
 ```text
 backend/
@@ -280,7 +279,7 @@ README.md
 No Render, deixe:
 
 ```text
-Root Directory: vazio
+Root Directory: PetLify
 Build Command: bash render-build.sh
 Start Command: bash render-start.sh
 ```
