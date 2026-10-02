@@ -190,6 +190,8 @@ Planos, serviços, benefícios e assinaturas têm validade de 30 dias. As cotas 
 
 O esquema atual tem 12 tabelas de domínio, além de alembic_version, na revisão c83f9e205d16. As chaves compostas protegem os vínculos entre loja, tutor, pet, assinatura e pagamento. Em 30/09/2026, a validação aprovou 24 testes de backend em SQLite, o build TypeScript/Vite e a jornada principal pela interface; veja [o registro dos resultados](docs/validacao-jornada.md).
 
+Em 02/10/2026, o passo 3 aprovou 32 testes de backend, 14 testes de frontend (`npm run test:dates`), build e QA de horários no navegador. UTC para compras/assinaturas/auditoria e America/Sao_Paulo para agenda/vacina estão definidos em [datas e horários](docs/datas-e-horarios.md); não há migração de dados neste passo. Próxima etapa: banco persistente gratuito.
+
 A continuidade do grupo está em [CONTINUIDADE.md](docs/CONTINUIDADE.md). A ordem aprovada em 30/09/2026 está em [ROTEIRO.md](docs/ROTEIRO.md): consolidar, validar a jornada, corrigir horários, preparar persistência, automatizar verificações e completar a operação.
 
 No Render, os dados de demonstração só são inseridos quando `SEED_DEMO=true`. Deixe essa opção desligada para preservar contas reais.

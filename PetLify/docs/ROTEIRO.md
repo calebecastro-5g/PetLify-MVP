@@ -7,7 +7,7 @@ Este registro mantém a ordem combinada; decisões de contratação de serviços
 | --- | --- | --- | --- |
 | 1 | Consolidar código e documentação | Concluído em 30/09/2026 | Versão de trabalho incorpora a main; guias descrevem o código atual; registros locais preservados |
 | 2 | Testar uma jornada completa pelo navegador | Concluído em 30/09/2026 | Cadastro, pet, compra simulada, agendamento, cota, cancelamento e remarcação verificados; celular e isolamento entre lojas avaliados |
-| 3 | Corrigir o tratamento de datas e horários | Pendente | Contrato de horários definido; conversão entre armazenamento e exibição testada; legado tratado explicitamente |
+| 3 | Corrigir o tratamento de datas e horários | Concluído em 02/10/2026 | Contrato de horários definido; conversão entre armazenamento e exibição testada; legado tratado explicitamente |
 | 4 | Configurar banco persistente antes de usar dados importantes | Pendente | Banco escolhido; migrações testadas; backup e restauração demonstrados; implantação validada |
 | 5 | Automatizar a verificação no GitHub | Pendente | Testes de backend e build frontend executam nos pull requests e indicam falhas |
 | 6 | Completar a operação da equipe | Pendente | Histórico de usos para funcionário/dono; política de retenção de registros definida e implementada |
@@ -33,15 +33,15 @@ Resultado de 30/09/2026: jornada aprovada, com três correções e limites regis
 
 ## Passo 3 — Datas e horários
 
-Hoje datas sem fuso e remoção de offset coexistem no MVP.
-Escolher um contrato consistente antes de converter dados antigos: separar horários de agenda da loja e instantes de compra/assinatura.
-Testar vigência, fronteiras dos blocos e cancelamento de seis horas.
-Não reinterpretar todos os registros antigos como UTC sem examinar sua origem.
+Contrato implementado: instantes de compra/assinatura/auditoria em UTC; agenda/vacina em America/Sao_Paulo. A API informa o fuso e as telas usam o fuso da loja.
+Valores legados preservados, sem migração de dados; origens ambíguas documentadas.
+Resultado de 02/10/2026: 32 testes de backend, 14 de frontend, build e QA de compra, reserva/edição e vacina aprovados. Detalhes e texto para ata: [datas-e-horarios.md](datas-e-horarios.md). Próximo passo: 4.
 
 ## Passo 4 — Persistência
 
 O Render demo usa SQLite em /tmp, sem garantia de preservação.
-Escolher com o grupo um serviço/banco compatível com orçamento e requisitos.
+Restrição definida por Calebe em 02/10/2026: “Precisamos de uma opção gratuita”.
+Escolher com o grupo um serviço/banco compatível com essa restrição e os requisitos.
 Preparar e testar migrações em ambiente separado, backup e restauração antes da adoção.
 Conectar serviço e implantar somente quando destino, credenciais e eventuais custos estiverem definidos.
 

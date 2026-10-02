@@ -6,6 +6,7 @@ import ProfileEditor from '../components/ProfileEditor';
 import Spinner from '../components/Spinner';
 import SubscriptionUsage, { PetSubscription } from '../components/SubscriptionUsage';
 import { apiFetch } from '../lib/api';
+import { formatDateTime, formatDate, toDateTimeInput } from '../lib/dates';
 import { CatalogItem, formatCurrency, platformPlans, platformServices } from '../lib/catalog';
 
 type Pet = {
@@ -72,21 +73,6 @@ type Slot = {
 const breedOptions = ['SRD', 'Shih-tzu', 'Poodle', 'Golden Retriever', 'Bulldog', 'Labrador', 'Yorkshire', 'Pinscher', 'Persa', 'Siamês', 'Maine Coon', 'Outra'];
 const initialPetForm = { name: '', species: 'Cão', breed: 'SRD', size: 'Pequeno', age: '1' };
 const initialAppointmentForm = { petId: '', billing: 'avulso', serviceId: platformServices[0].id, date: '', slot: '', notes: '' };
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-}
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString('pt-BR');
-}
-
-
-function toDateTimeInput(value: string) {
-  const date = new Date(value);
-  const pad = (num: number) => String(num).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
 
 function serviceById(serviceId: string) {
   return platformServices.find((service) => service.id === serviceId) || platformServices[0];

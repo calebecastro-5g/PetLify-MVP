@@ -1,4 +1,4 @@
-from datetime import datetime
+from time_utils import utc_now, utc_iso, local_iso
 from enum import Enum
 from sqlalchemy.ext.hybrid import hybrid_property
 from extensions import db, bcrypt
@@ -31,7 +31,7 @@ class Store(db.Model):
     name = db.Column(db.String(128), nullable=False)
     tenant_key = db.Column(db.String(64), unique=True, nullable=False, index=True)
     address = db.Column(db.String(255), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     users = db.relationship('User', backref='store', lazy=True)
     pets = db.relationship('Pet', backref='store', lazy=True)
@@ -62,7 +62,7 @@ class User(db.Model):
     _password = db.Column('password', db.String(128), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     accepted_lgpd = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     pets = db.relationship('Pet', backref='owner', lazy=True, foreign_keys='Pet.owner_id')
     appointments = db.relationship('Appointment', backref='client', lazy=True, foreign_keys='Appointment.client_id')
@@ -110,7 +110,7 @@ class Pet(db.Model):
     age = db.Column(db.Integer, nullable=False, default=0)
     plan = db.Column(db.String(64), nullable=True)
     photo_icon = db.Column(db.String(16), nullable=False, default='🐾')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     vaccine_records = db.relationship('VaccineRecord', backref='pet', lazy=True)
     subscriptions = db.relationship('Subscription', backref='pet', lazy=True, cascade='all, delete-orphan', foreign_keys='Subscription.pet_id')
@@ -121,7 +121,8 @@ class Pet(db.Model):
     )
 
     def subscription_at(self, moment=None):
-        moment = moment or datetime.utcnow()
+        """Find coverage for a UTC instant (naive, matching subscription columns)."""
+        moment = moment or utc_now()
         return Subscription.query.filter(
             Subscription.pet_id == self.id,
             Subscription.store_id == self.store_id,
@@ -166,7 +167,7 @@ class VaccineRecord(db.Model):
     lot = db.Column(db.String(64), nullable=True)
     status = db.Column(db.String(64), nullable=False, default='Em dia')
     notes = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     def to_dict(self):
         return {
@@ -174,8 +175,8 @@ class VaccineRecord(db.Model):
             'pet_id': self.pet_id,
             'pet_name': self.pet.name if self.pet else 'Pet',
             'vaccine_name': self.vaccine_name,
-            'applied_at': self.applied_at.isoformat(),
-            'valid_until': self.valid_until.isoformat() if self.valid_until else None,
+            'applied_at': local_iso(self.applied_at),
+            'valid_until': local_iso(self.valid_until) if self.valid_until else None,
             'veterinarian': self.veterinarian,
             'lot': self.lot,
             'status': self.status,
@@ -195,7 +196,7 @@ class Appointment(db.Model):
     status = db.Column(db.Enum(AppointmentStatus), default=AppointmentStatus.PENDING)
     notes = db.Column(db.Text, nullable=True)
     subscription_id = db.Column(db.Integer, db.ForeignKey('subscriptions.id'), nullable=True, index=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     pet = db.relationship('Pet', lazy=True, foreign_keys=[pet_id])
     subscription = db.relationship('Subscription', lazy=True, foreign_keys=[subscription_id])
@@ -218,7 +219,7 @@ class Appointment(db.Model):
             'pet_name': self.pet.name if self.pet else 'Pet',
             'pet_species': self.pet.species if self.pet else None,
             'service': self.service,
-            'scheduled_at': self.scheduled_at.isoformat(),
+            'scheduled_at': local_iso(self.scheduled_at),
             'status': self.status.value,
             'notes': self.notes,
         }
@@ -240,7 +241,7 @@ class Payment(db.Model):
     item_type = db.Column(db.String(64), nullable=True)
     confirmed_by_employee_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     confirmed_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     client = db.relationship('User', foreign_keys=[client_id], lazy=True)
     __table_args__ = (
@@ -268,8 +269,8 @@ class Payment(db.Model):
             'item_name': self.item_name,
             'item_type': self.item_type,
             'confirmed_by_employee_id': self.confirmed_by_employee_id,
-            'confirmed_at': self.confirmed_at.isoformat() if self.confirmed_at else None,
-            'created_at': self.created_at.isoformat(),
+            'confirmed_at': utc_iso(self.confirmed_at) if self.confirmed_at else None,
+            'created_at': utc_iso(self.created_at),
         }
 
 
@@ -358,11 +359,11 @@ class Subscription(db.Model):
     )
 
     def to_dict(self):
-        now = datetime.utcnow()
+        now = utc_now()
         return {
             'id': self.id, 'pet_id': self.pet_id, 'plan_id': self.plan_id,
             'plan_name': self.plan.name,
-            'starts_at': self.starts_at.isoformat(), 'ends_at': self.ends_at.isoformat(),
+            'starts_at': utc_iso(self.starts_at), 'ends_at': utc_iso(self.ends_at),
             'status': 'expired' if self.status == 'active' and now >= self.ends_at else self.status,
             'source': self.source,
         }
@@ -377,7 +378,7 @@ class AuditLog(db.Model):
     action = db.Column(db.String(256), nullable=False)
     entity_type = db.Column(db.String(128), nullable=False)
     entity_id = db.Column(db.Integer, nullable=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=utc_now)
     details = db.Column(db.Text)
 
     def to_dict(self):
@@ -388,6 +389,6 @@ class AuditLog(db.Model):
             'action': self.action,
             'entity_type': self.entity_type,
             'entity_id': self.entity_id,
-            'timestamp': self.timestamp.isoformat(),
+            'timestamp': utc_iso(self.timestamp),
             'details': self.details,
         }

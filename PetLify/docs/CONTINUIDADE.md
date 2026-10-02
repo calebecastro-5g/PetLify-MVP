@@ -1,6 +1,6 @@
 # Continuidade do PetLify
 
-Atualizado em 30/09/2026. Estado atual da retomada; registros anteriores continuam nos guias de cada etapa e no histórico Git.
+Atualizado em 02/10/2026. Estado atual da retomada; registros anteriores continuam nos guias de cada etapa e no histórico Git.
 
 ## Como estamos trabalhando
 
@@ -20,7 +20,7 @@ O roteiro oficial está em [ROTEIRO.md](ROTEIRO.md), nesta ordem:
 5. Automatizar a verificação no GitHub.
 6. Completar a operação da equipe.
 
-Retomada atual: passos 1 e 2 concluídos em 30/09/2026. Próximo: passo 3, datas e horários. Manter essa ordem; não tratar verificações ainda não feitas como concluídas.
+Retomada atual: passos 1 e 2 concluídos em 30/09/2026; passo 3 concluído em 02/10/2026. Próximo: passo 4, banco persistente gratuito. Manter essa ordem; não tratar verificações ainda não feitas como concluídas.
 
 ## Versões e pastas
 
@@ -30,7 +30,9 @@ Retomada atual: passos 1 e 2 concluídos em 30/09/2026. Próximo: passo 3, datas
 - O Git usado para publicação está em github-publicacao. A pasta superior e a cópia do ZIP não substituem esse histórico.
 - PR #1 integrado à main: https://github.com/calebecastro-5g/PetLify-MVP/pull/1
 - Commit da tela de saldo: 5f8ce01; integração na main: 84911c6.
-- Branch desta retomada: codex/consolidacao-validacao. Incorpora origin/main e os registros posteriores sem reescrever histórico.
+- Branch dos passos 1–2: codex/consolidacao-validacao. Incorpora origin/main e os registros posteriores sem reescrever histórico.
+- Branch do passo 3: codex/datas-horarios, derivada da anterior; commit f173150.
+- Passo 3 publicado no PR #3, aberto para revisão: https://github.com/calebecastro-5g/PetLify-MVP/pull/3. Base: codex/consolidacao-validacao; depende do PR #2. Integrar #2 primeiro e depois conferir/ajustar a base de #3 para main antes de integrar. Nenhum dos dois foi integrado ao encerrar esta etapa.
 - Passos 1 e 2 publicados no PR #2, aberto para revisão: https://github.com/calebecastro-5g/PetLify-MVP/pull/2. Ainda não integrado à main no encerramento desta etapa.
 - Commits das correções e do roteiro/validação: 829fef6 e 0a9930d.
 
@@ -46,6 +48,7 @@ Retomada atual: passos 1 e 2 concluídos em 30/09/2026. Próximo: passo 3, datas
 | 6 | c83f9e205d16 | Cotas separadas por serviço; limites contratados; concorrência na última cota |
 | 7 | 5f8ce01 | Saldo na área do cliente, por pet e por data de atendimento |
 | Retomada, passos 1–2 | codex/consolidacao-validacao | Guias consolidados; jornada validada; rotas diretas React, altura dos cartões e ciclo no checkout corrigidos |
+| Retomada, passo 3 | codex/datas-horarios | UTC explícito para instantes; horário de São Paulo para agenda/vacina; comparações e telas corrigidas sem regravar legado |
 
 São 12 tabelas de domínio, além de alembic_version. O arquivo SQLite local fica em backend/instance/petlify.db e não entra no Git.
 GET /api/subscriptions consulta o histórico autorizado; GET /api/subscriptions/<id>/usage consulta uso por bloco.
@@ -62,7 +65,9 @@ Render aplica migrações no início; seed somente com SEED_DEMO=true.
 - As regras contratadas são copiadas em subscription_limits.
 - PIX/cartão são simulados. Seed redefine contas demo; não executar sobre dados a preservar.
 - pets.plan permanece legado. Transição de planos legados concedeu 30 dias sem inventar pagamentos.
-- Datas/fuso, persistência externa, compras repetidas/concorrentes e retenção de histórico precisam evoluir.
+- Datas/fuso seguem [o contrato do passo 3](datas-e-horarios.md): UTC para instantes, America/Sao_Paulo para agenda/vacina, exibição no fuso da loja. Legado ambíguo está documentado.
+- Persistência externa, compras repetidas/concorrentes e retenção de histórico precisam evoluir.
+- Banco persistente precisa ser gratuito, conforme resposta de Calebe em 02/10/2026.
 - Cotas transacionais foram testadas em SQLite; isso não certifica lotação simultânea da loja ou outro banco.
 - Catálogo ainda tem definições fixas no frontend/backend.
 
@@ -84,14 +89,26 @@ Render aplica migrações no início; seed somente com SEED_DEMO=true.
 - 24 testes de backend aprovados (22 anteriores e 2 de regressão); build TypeScript/Vite aprovado.
 - Preview reproduzível: backend/preview_journey.py, banco descartável separado do desenvolvimento.
 - Relatório detalhado e texto para ata: [validacao-jornada.md](validacao-jornada.md).
-- Diferença de três horas observada na contratação; será tratada no passo 3, sem reinterpretar o legado indiscriminadamente.
+- Diferença de três horas observada na contratação em 30/09; corrigida no passo 3, conforme o novo contrato de horários.
 
 Comando na cópia executável, a partir de backend:
 ```powershell
 ..\.venv\Scripts\python.exe -W ignore::DeprecationWarning -m unittest discover -s tests -v
 ```
 
+## Evidências do passo 3 — 02/10/2026
+
+- 32 testes de backend aprovados: 24 anteriores e 8 novos, todos em SQLite temporário.
+- 14 testes de frontend aprovados em dispositivos configurados em UTC e Asia/Tokyo; build TypeScript/Vite aprovado.
+- Navegador: compra às 01:16 locais; reserva em 03/10 às 08h preservada ao editar/salvar; um uso de banho reservado.
+- Edição de vacina preservou aplicação e validade ao salvar apenas o lote.
+- Revisão c83f9e205d16 permanece; nenhuma migração de dados neste passo. Banco de desenvolvimento não usado para QA.
+- Documento para ensino/ata: [datas-e-horarios.md](datas-e-horarios.md).
+- Próximo: preparar banco persistente gratuito; implantação e backup/restauração ainda pendentes.
+
 ## Registro da retomada
 
 30/09/2026: roteiro de seis passos aprovado e salvo. Referências remotas atualizadas; nova branch incorpora main e registros posteriores.
 Documentação consolidada e cópia executável sincronizada após comparação dos arquivos. Passos 1 e 2 concluídos; próximos passos preservados no roteiro. Nenhum banco persistente externo foi contratado ou implantado.
+
+02/10/2026: passo 3 concluído e registrado. Comparação dos 71 arquivos versionados não encontrou alterações independentes na cópia executável antes da sincronização. Calebe definiu que o banco da próxima etapa deve ser gratuito.

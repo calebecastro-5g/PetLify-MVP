@@ -3,6 +3,7 @@ from datetime import timedelta
 from sqlalchemy import update
 from extensions import db
 from models import Appointment, AppointmentStatus, Subscription
+from time_utils import utc_to_local, utc_iso
 
 
 def lock_subscription(subscription):
@@ -15,6 +16,7 @@ def lock_subscription(subscription):
 
 
 def usage_for(subscription, service, moment, ignore_appointment_id=None):
+    # UTC periods are converted to the agenda column's shop wall time.
     limit = next((item for item in subscription.limits if item.service.name == service), None)
     if not limit or not subscription.starts_at <= moment < subscription.ends_at:
         return None
@@ -26,8 +28,8 @@ def usage_for(subscription, service, moment, ignore_appointment_id=None):
         Appointment.store_id == subscription.store_id,
         Appointment.pet_id == subscription.pet_id,
         Appointment.service == service,
-        Appointment.scheduled_at >= start,
-        Appointment.scheduled_at < end,
+        Appointment.scheduled_at >= utc_to_local(start),
+        Appointment.scheduled_at < utc_to_local(end),
         Appointment.status != AppointmentStatus.CANCELED,
     )
     if ignore_appointment_id is not None:
@@ -35,7 +37,7 @@ def usage_for(subscription, service, moment, ignore_appointment_id=None):
     used = query.count()
     return {'service': service, 'limit': limit.max_uses, 'used': used,
             'remaining': max(0, limit.max_uses - used),
-            'period_starts_at': start.isoformat(), 'period_ends_at': end.isoformat()}
+            'period_starts_at': utc_iso(start), 'period_ends_at': utc_iso(end)}
 
 
 def quota_error(subscription, service, moment, ignore_appointment_id=None):

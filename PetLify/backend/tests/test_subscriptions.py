@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from datetime import datetime, timedelta
+from time_utils import utc_iso, local_iso
 from pathlib import Path
 
 from flask_jwt_extended import create_access_token
@@ -58,7 +59,7 @@ class SubscriptionFlowTests(unittest.TestCase):
         return self.client.post('/api/payments', json=data, headers=self.headers)
 
     def schedule(self, **kwargs):
-        data = {'pet_id': self.pet.id, 'service': 'Banho', 'scheduled_at': (datetime.utcnow() + timedelta(days=1)).isoformat(), 'billing_type': 'Plano mensal'}
+        data = {'pet_id': self.pet.id, 'service': 'Banho', 'scheduled_at': utc_iso(datetime.utcnow() + timedelta(days=1)), 'billing_type': 'Plano mensal'}
         data.update(kwargs)
         return self.client.post('/api/appointments', json=data, headers=self.headers)
 
@@ -108,7 +109,7 @@ class SubscriptionFlowTests(unittest.TestCase):
                         ), {'store': self.user.store_id, 'client': client_id, 'pet': self.pet.id,
                             'subscription': subscription_id, 'at': datetime.utcnow()})
         # A different pet can still have a valid independent appointment.
-        valid = self.schedule(pet_id=sibling.id, scheduled_at=(datetime.utcnow()+timedelta(days=2)).isoformat())
+        valid = self.schedule(pet_id=sibling.id, scheduled_at=utc_iso(datetime.utcnow()+timedelta(days=2)))
         self.assertEqual(valid.status_code, 201, valid.json)
         self.assertFalse(valid.json['payment_required'])
 
@@ -197,24 +198,24 @@ class SubscriptionFlowTests(unittest.TestCase):
         self.buy()
         subscription = Subscription.query.one()
         start = subscription.starts_at
-        self.assertEqual(self.schedule(scheduled_at=(start+timedelta(days=1)).isoformat()).status_code, 201)
-        self.assertEqual(self.schedule(service='Tosa', scheduled_at=(start+timedelta(days=2)).isoformat()).status_code, 201)
-        rejected = self.schedule(scheduled_at=(start+timedelta(days=14)).isoformat())
+        self.assertEqual(self.schedule(scheduled_at=utc_iso(start+timedelta(days=1))).status_code, 201)
+        self.assertEqual(self.schedule(service='Tosa', scheduled_at=utc_iso(start+timedelta(days=2))).status_code, 201)
+        rejected = self.schedule(scheduled_at=utc_iso(start+timedelta(days=14)))
         self.assertEqual(rejected.status_code, 409, rejected.json)
         self.assertEqual(rejected.json['code'], 'subscription_quota_exceeded')
-        self.assertEqual(self.schedule(scheduled_at=(start+timedelta(days=15)).isoformat()).status_code, 201)
-        self.assertEqual(self.schedule(scheduled_at=(start+timedelta(days=30)).isoformat()).status_code, 400)
+        self.assertEqual(self.schedule(scheduled_at=utc_iso(start+timedelta(days=15))).status_code, 201)
+        self.assertEqual(self.schedule(scheduled_at=utc_iso(start+timedelta(days=30))).status_code, 400)
 
     def test_plus_extras_and_partial_last_week(self):
         self.buy(item_id='plan-premium-plus')
         start = Subscription.query.one().starts_at
         for day, expected in [(1, 201), (2, 201), (3, 409), (7, 201), (28, 201), (29, 201)]:
-            response = self.schedule(scheduled_at=(start+timedelta(days=day)).isoformat())
+            response = self.schedule(scheduled_at=utc_iso(start+timedelta(days=day)))
             self.assertEqual(response.status_code, expected, response.json)
-        self.assertEqual(self.schedule(scheduled_at=(start+timedelta(days=29, hours=2)).isoformat()).status_code, 409)
+        self.assertEqual(self.schedule(scheduled_at=utc_iso(start+timedelta(days=29, hours=2))).status_code, 409)
         for service, day in [('Hidratação', 4), ('Corte de unha', 5), ('Limpeza de ouvido', 6)]:
-            self.assertEqual(self.schedule(service=service, scheduled_at=(start+timedelta(days=day)).isoformat()).status_code, 201)
-            self.assertEqual(self.schedule(service=service, scheduled_at=(start+timedelta(days=day+10)).isoformat()).status_code, 409)
+            self.assertEqual(self.schedule(service=service, scheduled_at=utc_iso(start+timedelta(days=day))).status_code, 201)
+            self.assertEqual(self.schedule(service=service, scheduled_at=utc_iso(start+timedelta(days=day+10))).status_code, 409)
 
     def test_cancel_reactivation_no_show_and_deletion(self):
         self.buy()
@@ -222,32 +223,32 @@ class SubscriptionFlowTests(unittest.TestCase):
         url = f'/api/appointments/{first}'
         self.assertEqual(self.client.delete(url, headers=self.headers).status_code, 409)
         self.assertEqual(self.client.put(url, json={'status': 'Cancelado'}, headers=self.headers).status_code, 200)
-        second = self.schedule(scheduled_at=(datetime.utcnow()+timedelta(days=2)).isoformat()).json['id']
+        second = self.schedule(scheduled_at=utc_iso(datetime.utcnow()+timedelta(days=2))).json['id']
         self.user.role = Role.OWNER
         db.session.commit()
         headers = self.headers_for(self.user)
         self.assertEqual(self.client.put(url, json={'status': 'Confirmado'}, headers=headers).status_code, 409)
         self.assertEqual(self.client.put(f'/api/appointments/{second}', json={'status': 'Falta'}, headers=headers).status_code, 200)
         self.assertEqual(self.client.put(f'/api/appointments/{second}', json={'billing_type': 'Serviço avulso'}, headers=headers).status_code, 409)
-        self.assertEqual(self.schedule(scheduled_at=(datetime.utcnow()+timedelta(days=3)).isoformat()).status_code, 409)
+        self.assertEqual(self.schedule(scheduled_at=utc_iso(datetime.utcnow()+timedelta(days=3))).status_code, 409)
         self.assertEqual(self.client.delete(f'/api/appointments/{second}', headers=headers).status_code, 409)
         self.assertEqual(self.client.delete(url, headers=headers).status_code, 200)
 
     def test_reschedule_is_atomic_and_does_not_count_itself(self):
         self.buy()
         start = Subscription.query.one().starts_at
-        first = self.schedule(scheduled_at=(start+timedelta(days=1)).isoformat()).json
-        self.schedule(scheduled_at=(start+timedelta(days=16)).isoformat())
+        first = self.schedule(scheduled_at=utc_iso(start+timedelta(days=1))).json
+        self.schedule(scheduled_at=utc_iso(start+timedelta(days=16)))
         url = f"/api/appointments/{first['id']}"
-        moved = self.client.put(url, json={'scheduled_at': (start+timedelta(days=17)).isoformat()}, headers=self.headers)
+        moved = self.client.put(url, json={'scheduled_at': utc_iso(start+timedelta(days=17))}, headers=self.headers)
         self.assertEqual(moved.status_code, 409, moved.json)
         from models import Appointment
-        self.assertEqual(db.session.get(Appointment, first['id']).scheduled_at.isoformat(), first['scheduled_at'])
+        self.assertEqual(local_iso(db.session.get(Appointment, first['id']).scheduled_at), first['scheduled_at'])
         unchanged = self.client.put(url, json={'scheduled_at': first['scheduled_at']}, headers=self.headers)
         self.assertEqual(unchanged.status_code, 200, unchanged.json)
         avulso = self.client.put(url, json={'billing_type': 'Serviço avulso'}, headers=self.headers)
         self.assertEqual(avulso.status_code, 200)
-        self.assertEqual(self.schedule(scheduled_at=(start+timedelta(days=2)).isoformat()).status_code, 201)
+        self.assertEqual(self.schedule(scheduled_at=utc_iso(start+timedelta(days=2))).status_code, 201)
 
     def test_usage_authorization_and_contracted_snapshot(self):
         self.buy()
@@ -265,7 +266,7 @@ class SubscriptionFlowTests(unittest.TestCase):
         self.assertEqual(self.client.get(url, headers=self.headers_for(self.other_user)).status_code, 404)
         neighbor, sibling, _ = self.same_store_neighbors()
         self.assertEqual(self.client.get(url, headers=self.headers_for(neighbor)).status_code, 404)
-        self.assertEqual(self.schedule(pet_id=sibling.id, scheduled_at=(datetime.utcnow()+timedelta(days=2)).isoformat()).status_code, 201)
+        self.assertEqual(self.schedule(pet_id=sibling.id, scheduled_at=utc_iso(datetime.utcnow()+timedelta(days=2))).status_code, 201)
         self.assertEqual(self.client.get(url+'?at=invalid', headers=self.headers).status_code, 400)
         self.assertEqual(self.client.get(url+'?at=2000-01-01T00:00:00', headers=self.headers).status_code, 400)
 
@@ -280,7 +281,7 @@ class SubscriptionFlowTests(unittest.TestCase):
         db.session.expire_all()
         self.assertEqual(Appointment.query.one().to_dict(), before)
         self.assertEqual(SubscriptionLimit.query.count(), 2)
-        self.assertEqual(self.schedule(scheduled_at=(datetime.utcnow()+timedelta(days=2)).isoformat()).status_code, 409)
+        self.assertEqual(self.schedule(scheduled_at=utc_iso(datetime.utcnow()+timedelta(days=2))).status_code, 409)
 
     def test_reactivation_checks_slot_and_completion_keeps_expired_history(self):
         from models import Appointment
@@ -295,7 +296,7 @@ class SubscriptionFlowTests(unittest.TestCase):
         response = self.client.put(url, json={'status': 'Confirmado'}, headers=headers)
         self.assertEqual(response.status_code, 409)
         self.assertIn('Horário', response.json['error'])
-        second = self.schedule(scheduled_at=(datetime.utcnow()+timedelta(days=2)).isoformat()).json
+        second = self.schedule(scheduled_at=utc_iso(datetime.utcnow()+timedelta(days=2))).json
         subscription = Subscription.query.one()
         subscription.starts_at -= timedelta(days=40)
         subscription.ends_at -= timedelta(days=40)
@@ -321,7 +322,7 @@ class SubscriptionFlowTests(unittest.TestCase):
             with self.app.test_client() as client:
                 return client.post('/api/appointments', json={
                     'pet_id': pet_id, 'service': 'Banho', 'billing_type': 'Plano mensal',
-                    'scheduled_at': (datetime.utcnow()+timedelta(days=day)).isoformat(),
+                    'scheduled_at': utc_iso(datetime.utcnow()+timedelta(days=day)),
                 }, headers=headers).status_code
         db.session.remove()
         with patch('api.lock_subscription', side_effect=synchronized_lock):
@@ -372,13 +373,13 @@ class SubscriptionFlowTests(unittest.TestCase):
         covered = self.schedule()
         self.assertEqual(covered.status_code, 201, covered.json)
         self.assertFalse(covered.json['payment_required'])
-        avulso = self.schedule(billing_type='Serviço avulso', scheduled_at=(datetime.utcnow() + timedelta(days=2)).isoformat())
+        avulso = self.schedule(billing_type='Serviço avulso', scheduled_at=utc_iso(datetime.utcnow() + timedelta(days=2)))
         self.assertEqual(avulso.status_code, 201, avulso.json)
         self.assertTrue(avulso.json['payment_required'])
 
     def test_expiration_rejects_future_coverage_and_clears_pet_plan(self):
         self.buy()
-        response = self.schedule(scheduled_at=(datetime.utcnow() + timedelta(days=31)).isoformat())
+        response = self.schedule(scheduled_at=utc_iso(datetime.utcnow() + timedelta(days=31)))
         self.assertEqual(response.status_code, 400)
         subscription = Subscription.query.one()
         subscription.starts_at = datetime.utcnow() - timedelta(days=31)
