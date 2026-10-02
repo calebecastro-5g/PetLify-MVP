@@ -20,7 +20,7 @@ O roteiro oficial está em [ROTEIRO.md](ROTEIRO.md), nesta ordem:
 5. Automatizar a verificação no GitHub.
 6. Completar a operação da equipe.
 
-Retomada atual: passos 1 e 2 concluídos em 30/09/2026; passo 3 concluído em 02/10/2026. Próximo: passo 4, banco persistente gratuito. Manter essa ordem; não tratar verificações ainda não feitas como concluídas.
+Retomada atual: passos 1 e 2 concluídos em 30/09/2026; passos 3 e 4 concluídos em 02/10/2026. Render conectado ao Neon Free, jornada publicada e reinício verificados; backup com os novos cadastros restaurado em PostgreSQL local separado. Próximo: passo 5, verificações automáticas no GitHub. Manter essa ordem; não tratar verificações ainda não feitas como concluídas.
 
 ## Versões e pastas
 
@@ -32,6 +32,8 @@ Retomada atual: passos 1 e 2 concluídos em 30/09/2026; passo 3 concluído em 02
 - Commit da tela de saldo: 5f8ce01; integração na main: 84911c6.
 - Branch dos passos 1–2: codex/consolidacao-validacao. Incorpora origin/main e os registros posteriores sem reescrever histórico.
 - Branch do passo 3: codex/datas-horarios, derivada da anterior; commit f173150.
+- Branch do passo 4: codex/banco-persistente, derivada de codex/datas-horarios. Publicada no Render com Neon; jornada, permanência após reinício e backup dos novos registros restaurado localmente aprovados.
+- Passo 4 publicado no PR #4 ainda em rascunho: https://github.com/calebecastro-5g/PetLify-MVP/pull/4; código 6fa54a9 e primeira implantação aprovada 05b7ab7. Base: codex/datas-horarios. Ordem de revisão/integração: #2, #3, #4, conferindo/ajustando cada base após integrar o anterior. Implantação validada; descrição/estado de rascunho ainda precisam ser atualizados. A integração GitHub recebeu 403 ao editar metadados; uso alternativo da sessão do navegador foi bloqueado pela revisão automática sem autorização específica. Commits/documentos atuais publicados por Git; nenhum merge nesta entrega.
 - Passo 3 publicado no PR #3, aberto para revisão: https://github.com/calebecastro-5g/PetLify-MVP/pull/3. Base: codex/consolidacao-validacao; depende do PR #2. Integrar #2 primeiro e depois conferir/ajustar a base de #3 para main antes de integrar. Nenhum dos dois foi integrado ao encerrar esta etapa.
 - Passos 1 e 2 publicados no PR #2, aberto para revisão: https://github.com/calebecastro-5g/PetLify-MVP/pull/2. Ainda não integrado à main no encerramento desta etapa.
 - Commits das correções e do roteiro/validação: 829fef6 e 0a9930d.
@@ -49,6 +51,7 @@ Retomada atual: passos 1 e 2 concluídos em 30/09/2026; passo 3 concluído em 02
 | 7 | 5f8ce01 | Saldo na área do cliente, por pet e por data de atendimento |
 | Retomada, passos 1–2 | codex/consolidacao-validacao | Guias consolidados; jornada validada; rotas diretas React, altura dos cartões e ciclo no checkout corrigidos |
 | Retomada, passo 3 | codex/datas-horarios | UTC explícito para instantes; horário de São Paulo para agenda/vacina; comparações e telas corrigidas sem regravar legado |
+| Retomada, passo 4 | codex/banco-persistente | Render conectado ao Neon Free, jornada/reinício aprovados e backup com novos registros restaurado em PostgreSQL local separado |
 
 São 12 tabelas de domínio, além de alembic_version. O arquivo SQLite local fica em backend/instance/petlify.db e não entra no Git.
 GET /api/subscriptions consulta o histórico autorizado; GET /api/subscriptions/<id>/usage consulta uso por bloco.
@@ -66,9 +69,9 @@ Render aplica migrações no início; seed somente com SEED_DEMO=true.
 - PIX/cartão são simulados. Seed redefine contas demo; não executar sobre dados a preservar.
 - pets.plan permanece legado. Transição de planos legados concedeu 30 dias sem inventar pagamentos.
 - Datas/fuso seguem [o contrato do passo 3](datas-e-horarios.md): UTC para instantes, America/Sao_Paulo para agenda/vacina, exibição no fuso da loja. Legado ambíguo está documentado.
-- Persistência externa, compras repetidas/concorrentes e retenção de histórico precisam evoluir.
+- Compras repetidas/concorrentes e retenção de histórico precisam evoluir. Render já conectado ao Neon; backups externos automáticos ainda não configurados.
 - Banco persistente precisa ser gratuito, conforme resposta de Calebe em 02/10/2026.
-- Cotas transacionais foram testadas em SQLite; isso não certifica lotação simultânea da loja ou outro banco.
+- Cotas transacionais foram testadas em SQLite e PostgreSQL 18.4 temporário; isso não certifica lotação simultânea da loja entre assinaturas distintas nem a implantação na nuvem.
 - Catálogo ainda tem definições fixas no frontend/backend.
 
 ## Evidências anteriores
@@ -78,7 +81,7 @@ Render aplica migrações no início; seed somente com SEED_DEMO=true.
 - Backup: backend/instance/petlify-before-c83f9e205d16-20260929-232533.db.
 - Etapa 7: TypeScript/Vite compilados; preview temporário mostrou saldos de Mel e Thor. Naquele momento, a jornada completa ainda aguardava a verificação do passo 2.
 - O documento Word registro-de-alteracoes-petlify.docx registra etapas anteriores; revisão visual pendente por ausência do renderizador. Guias Markdown registram os adendos.
-- Render e outros bancos não foram validados.
+- Na etapa inicial, Render e outros bancos ainda não tinham sido validados. Passo 4 verificou PostgreSQL local, esquema Neon, implantação/reinício Render e backup do Neon restaurado localmente.
 
 ## Evidências da retomada — 30/09/2026
 
@@ -106,9 +109,36 @@ Comando na cópia executável, a partir de backend:
 - Documento para ensino/ata: [datas-e-horarios.md](datas-e-horarios.md).
 - Próximo: preparar banco persistente gratuito; implantação e backup/restauração ainda pendentes.
 
+## Evidências do passo 4 concluído — 02/10/2026
+
+- 39 testes de backend aprovados: 32 anteriores e 7 novos de configuração e comandos de verificação.
+- 13 verificações em PostgreSQL 18.4 temporário: seis migrações compatíveis com modelos, compra/reserva, cotas, isolamento, concorrência no último uso, permanência após reinício, backup/restauração integral e sequências de IDs.
+- Produção exige DATABASE_URL externa; Render não retorna silenciosamente a SQLite em /tmp. SQLite local preservado.
+- Nenhum arquivo de migração/modelo alterado; revisão c83f9e205d16 mantida.
+- Driver Psycopg 3.3.6 instalado na .venv local. Ferramentas de backup exigem executáveis PostgreSQL, já encontrados em C:/Program Files/PostgreSQL/18/bin neste computador.
+- Documento para ensino e ata: [banco-persistente.md](banco-persistente.md). Explica plano pago futuro e migração entre provedores.
+- Antes de sincronizar a cópia executável, 76 arquivos versionados foram comparados com a base Git; nenhuma alteração independente foi encontrada.
+- Conta Neon criada por Calebe; projeto separado PetLify Free criado em AWS Ohio. Branch production, banco petlify, PostgreSQL 18.6. Nenhum serviço opcional ou plano pago ativado; outro projeto existente não foi alterado.
+- Neon: seis migrações aplicadas até c83f9e205d16 e upgrade repetido; modelos sem divergência; database-check aprovado; TLS 1.3 confirmado pelo cliente psql. Catálogo com 3 planos, 5 serviços e 9 benefícios; nenhuma conta demo criada.
+- Backup do Neon restaurado em PostgreSQL local temporário separado; comparação integral das 13 tabelas aprovada. Nova conexão à origem confirmou os mesmos registros. Não foi testada restauração em outro serviço na nuvem.
+- Calebe confirmou sobre o SQLite publicado: “Apenas demonstração; pode começar vazio”. Não transferir esses cadastros nem executar seed na nova base. SQLite de desenvolvimento preservado.
+- Calebe recebeu a explicação sobre conexão/variáveis/deploy e autorizou: “certo, pode prosseguir”. Render https://petlify-mvp.onrender.com, Free, Ohio, passou de main/SQLite para codex/banco-persistente/Neon, com SEED_DEMO=false. Outras credenciais preservadas; Auto-Deploy On Commit mantido. A branch contém PRs #2/#3/#4; nenhum merge automático. Após integração revisada, conferir o commit e retornar o serviço à main.
+- Primeira publicação compilou mas recusou iniciar com SQLite; o campo secreto foi corrigido, conferido e salvo. Publicação dep-db01q5tg1s2s73c8hsd0 aprovada com 05b7ab7 às 18h09 de São Paulo. Logs confirmaram conexão, revisão/12 tabelas e Gunicorn ativo.
+- Jornada pela API publicada criou loja separada Loja QA Persistência (demonstração), dono/tutor fictícios, pet, compra PIX simulada, assinatura e reserva. Segundo banho bloqueado pela cota; cancelamento liberou uso e nova reserva aceita. Nenhum dado pessoal real, aceite de termos ou pagamento real usado.
+- Login e tela publicada mostraram registros e saldo. Reinício do Render às 18h12–18h13: nova execução aprovada; novo login comparou integralmente pet/pagamento/assinatura/dois agendamentos/saldo, sem diferenças. Recarregar diretamente /cliente funcionou. Consulta direta ao Neon confirmou IDs e vínculos.
+- Segundo backup Neon com esses registros restaurado em PostgreSQL local vazio; 13 tabelas comparadas integralmente, destino preenchido protegido e sequência de IDs validada. Evidências fora do Git em render-validacao-20261002.json, evidencias-persistencia-20261002 e .private-persistence/backups. Os registros de QA permaneceram identificados como demonstração; o grupo pode cadastrar sua própria loja separada.
+- Passo 4 concluído; próximo passo 5. Metadados do PR #4, revisão/integração dos PRs e retorno posterior à main continuam pendentes. Não usar a main antiga com DATABASE_URL Neon antes de integrar o código preparado.
+- Não foi criado backup externo automático nem contratação; PIX/cartão permanecem simulados.
+
 ## Registro da retomada
 
 30/09/2026: roteiro de seis passos aprovado e salvo. Referências remotas atualizadas; nova branch incorpora main e registros posteriores.
 Documentação consolidada e cópia executável sincronizada após comparação dos arquivos. Passos 1 e 2 concluídos; próximos passos preservados no roteiro. Nenhum banco persistente externo foi contratado ou implantado.
 
 02/10/2026: passo 3 concluído e registrado. Comparação dos 71 arquivos versionados não encontrou alterações independentes na cópia executável antes da sincronização. Calebe definiu que o banco da próxima etapa deve ser gratuito.
+
+02/10/2026: passo 4 preparado para PostgreSQL no Neon Free. Calebe autorizou prosseguir e perguntou sobre banco pago futuro; caminho de upgrade e transferência documentado. Validação PostgreSQL feita em ambiente temporário separado dos dados locais.
+
+02/10/2026: Calebe criou a conta e informou Render em Ohio. Projeto Neon Free PetLify criado na mesma região; migrações aplicadas em PostgreSQL 18.6 e backup inicial restaurado em destino local separado. Calebe autorizou iniciar vazio porque os cadastros publicados são demonstração.
+
+02/10/2026: após explicação e autorização específica, Render conectado ao Neon e codex/banco-persistente publicada. Campo secreto corrigido após primeira inicialização recusar SQLite. Jornada publicada, reinício preservando registros, origem dos IDs no Neon e backup dos novos cadastros restaurado localmente aprovados. Passo 4 concluído; próximo passo 5.

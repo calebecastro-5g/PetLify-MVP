@@ -6,6 +6,7 @@ from extensions import init_extensions, db
 from auth import auth_bp
 from api import api_bp
 from audit import register_audit_hooks
+from database_commands import register_database_commands
 
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_DIST = (BASE_DIR / '..' / 'frontend' / 'dist').resolve()
@@ -21,6 +22,7 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(api_bp, url_prefix='/api')
     register_audit_hooks(app)
+    register_database_commands(app)
 
     @app.route('/api/health')
     def health():

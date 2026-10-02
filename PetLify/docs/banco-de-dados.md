@@ -1,6 +1,6 @@
 # Banco de dados do PetLify
 
-Atualizado em 30/09/2026. O esquema atual inclui seis migrações, assinaturas e cotas. As regras estão em [assinaturas.md](assinaturas.md) e [cotas-dos-planos.md](cotas-dos-planos.md). A sequência aprovada está em [ROTEIRO.md](ROTEIRO.md).
+Atualizado em 02/10/2026. O esquema atual inclui seis migrações, assinaturas e cotas. As regras estão em [assinaturas.md](assinaturas.md) e [cotas-dos-planos.md](cotas-dos-planos.md). A sequência aprovada está em [ROTEIRO.md](ROTEIRO.md).
 
 ## O que já funciona
 
@@ -84,13 +84,13 @@ O catálogo está nas tabelas e ainda tem definições fixas no backend/frontend
 
 O preço pago fica no pagamento; os limites contratados ficam em subscription_limits. Cada compra inicia 30 dias. Banho e tosa têm cotas separadas em blocos de 7 ou 15 dias; extras do Plus têm um uso por ciclo. Mudanças no catálogo não alteram os limites contratados.
 
-Pendentes: birth_date como Date; retenção de histórico; concorrência da lotação entre assinaturas diferentes e de compras; datas/fuso; banco persistente. A disputa pela última cota de uma assinatura foi testada em SQLite.
+Pendentes: birth_date como Date; retenção de histórico; concorrência da lotação entre assinaturas diferentes e de compras; backups automáticos. Datas/fuso foram tratados no [passo 3](datas-e-horarios.md). A disputa pela última cota de uma assinatura foi testada em SQLite e PostgreSQL local; implantação persistente concluída no passo 4.
 
 ## Deploy
 
-O início do Render agora aplica `flask db upgrade`. O seed só roda com `SEED_DEMO=true`; deixe-o desligado em um banco com dados reais. Não registramos a URL completa do banco no log, pois ela pode conter senha.
+O início do Render verifica conexão, aplica `flask db upgrade` e verifica revisão/tabelas antes de iniciar a aplicação. O seed só roda com `SEED_DEMO=true`; deixe-o desligado em um banco com dados reais. Não registramos a URL completa do banco no log, pois ela pode conter senha.
 
-O SQLite em `/tmp` continua temporário. Esta etapa não configurou um banco externo persistente. O projeto inclui o driver PyMySQL; outros bancos podem exigir um driver adicional.
+O código publicado exige conexão externa explícita em produção e rejeita SQLite; desenvolvimento ainda pode usá-lo. Projeto PetLify no Neon Free em Ohio, PostgreSQL 18.6, com seis migrações aplicadas e conexão direta por Psycopg 3.3.6. O Render usa codex/banco-persistente com DATABASE_URL Neon e SEED_DEMO=false, sem merge dos PRs. Jornada publicada e reinício preservando registros foram verificados; backup com os novos cadastros restaurado em PostgreSQL local separado. O [guia de persistência](banco-persistente.md) registra resultados, limites gratuitos e evolução paga. Calebe autorizou começar vazio porque os registros antigos eram demonstração; SQLite local preservado. Revisar/integrar PRs antes de retornar o Render à main.
 
 ## Validação realizada
 
@@ -100,6 +100,8 @@ O SQLite em `/tmp` continua temporário. Esta etapa não configurou um banco ext
 - Reexecução de `upgrade`: sem recriar as tabelas.
 - Endpoint `/api/health`: resposta HTTP 200.
 
-A validação cobre SQLite local, não o deploy nem outro banco relacional.
+A lista acima registra a validação inicial em SQLite, anterior aos passos 3–4.
 
 Os itens acima registram a etapa inicial. Em 30/09/2026, 24 testes de backend passaram, incluindo modelos/migrações, cotas, autorização, concorrência na última cota e rotas da interface. O frontend compilou com TypeScript/Vite. A jornada principal do passo 2 foi validada; resultados e limites estão em [validacao-jornada.md](validacao-jornada.md).
+
+Em 02/10/2026, a preparação do passo 4 aprovou 39 testes de backend e 13 verificações em PostgreSQL 18.4 temporário. Migrações/modelos sem diferenças, cotas e concorrência, isolamento por loja, reinício e restauração integral verificados. Não houve migração do banco de desenvolvimento nem implantação na nuvem.
